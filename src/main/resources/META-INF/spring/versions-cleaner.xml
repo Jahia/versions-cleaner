@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+    <bean parent="jobSchedulingBean">
+        <property name="jobDetail">
+            <bean class="org.springframework.scheduling.quartz.JobDetailBean">
+                <property name="name" value="VersionsCleanerJob" />
+                <property name="jobClass" value="org.jahia.community.versionscleaner.CleanBackgroundJob" />
+                <property name="group" value="Maintenance" />
+                <property name="jobDataAsMap">
+                    <map>
+                        <entry key="reindexDefaultWorkspace" value="${jahia.versions.cleaner.job.reindexDefaultWorkspace:false}"/>
+                        <entry key="checkIntegrity" value="${jahia.versions.cleaner.job.checkIntegrity:false}"/>
+                        <entry key="nbVersionsToKeep" value="${jahia.versions.cleaner.job.nbVersionsToKeep:2}"/>
+                        <entry key="maxExecutionTimeInMs" value="${jahia.versions.cleaner.job.maxExecutionTimeInMs:60000}"/>
+                        <entry key="deleteOrphanedVersions" value="${jahia.versions.cleaner.job.deleteOrphanedVersions:false}"/>
+                    </map>
+                </property>
+                <property name="description" value="Keep only N unused versions" />
+            </bean>
+        </property>
+        <property name="trigger">
+            <bean class="org.quartz.CronTrigger">
+                <property name="name" value="VersionsCleanerJobTrigger"/>
+                <property name="cronExpression" value="${jahia.versions.cleaner.job.cronExpression:0 30 1 * * ?}"/>
+            </bean>
+        </property>
+    </bean>
+</beans>

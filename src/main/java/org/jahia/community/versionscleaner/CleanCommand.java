@@ -46,7 +46,7 @@ import org.jahia.utils.DatabaseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Command(scope = "cleaners-version", name = "keep-n", description = "Delete all version except the last N versions")
+@Command(scope = "versions-cleaner", name = "keep-n", description = "Delete all version except the last N versions")
 @Service
 public class CleanCommand implements Action {
 
@@ -175,7 +175,7 @@ public class CleanCommand implements Action {
 
     private static Long deleteVersions(JCRSessionWrapper session, String rootPath, Boolean checkIntegrity, Long nbVersionsToKeep, long start, Long maxExecutionTimeInMs) throws RepositoryException {
         long deletedVersions = 0L;
-        if (maxExecutionTimeInMs == 0 || start + maxExecutionTimeInMs < System.currentTimeMillis()) {
+        if (maxExecutionTimeInMs == 0 || System.currentTimeMillis() < start + maxExecutionTimeInMs) {
             final JCRNodeWrapper rootNodeWrapper = session.getNode(rootPath, false);
             final JCRNodeIteratorWrapper childNodeIterator = rootNodeWrapper.getNodes();
             while (childNodeIterator.hasNext()) {
@@ -194,7 +194,7 @@ public class CleanCommand implements Action {
                 }
             }
             session.refresh(false);
-        }
+        } 
         return deletedVersions;
     }
 

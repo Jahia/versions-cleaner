@@ -92,13 +92,15 @@ public class CleanCommand implements Action {
                     LOGGER.info(String.format("Finished reindexing default workspace in %s", DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
                 }
             }
-
-            LOGGER.info("Starting to delete versions");
             final long start = System.currentTimeMillis();
-            final Long deletedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteVersions(session, VERSIONS_PATH, checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs));
-            long end = System.currentTimeMillis();
-            if (LOGGER.isInfoEnabled()) {
-                LOGGER.info(String.format("Finished to delete %d versions in %s", deletedVersions, DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
+            long end;
+            if (nbVersionsToKeep >= 0) {
+                LOGGER.info("Starting to delete versions");
+                final Long deletedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteVersions(session, VERSIONS_PATH, checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs));
+                end = System.currentTimeMillis();
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info(String.format("Finished to delete %d versions in %s", deletedVersions, DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
+                }
             }
 
             if (deleteOrphanedVersions.booleanValue()) {
@@ -119,7 +121,7 @@ public class CleanCommand implements Action {
 
     private static Long deleteOrphanedVersions(JCRSessionWrapper session, JCRNodeWrapper startNode, long start, Long maxExecutionTimeInMs) {
         long deletedVersions = 0L;
-        if ((maxExecutionTimeInMs == 0 || start + maxExecutionTimeInMs < System.currentTimeMillis())) {
+        if ((maxExecutionTimeInMs == 0 || System.currentTimeMillis() < start + maxExecutionTimeInMs)) {
             try {
                 if (startNode.isNodeType(JcrConstants.NT_VERSIONHISTORY) && checkAndDeleteOrphanedVersionHistory(startNode, session)) {
                     deletedVersions++;
@@ -129,7 +131,7 @@ public class CleanCommand implements Action {
                     final JCRNodeIteratorWrapper it = startNode.getNodes();
                     while (it.hasNext()) {
                         JCRNodeWrapper node = (JCRNodeWrapper) it.next();
-                        deletedVersions = deleteOrphanedVersions(session, node, start, maxExecutionTimeInMs);
+                        deletedVersions = deletedVersions + deleteOrphanedVersions(session, node, start, maxExecutionTimeInMs);
                     }
                 }
             } catch (Exception ex) {
@@ -149,8 +151,7 @@ public class CleanCommand implements Action {
                     try {
                         session.getNodeByIdentifier(frozen.getPropertyAsString(JcrConstants.JCR_FROZENUUID));
                     } catch (ItemNotFoundException ex) {
-                        deleteOrphaned((VersionHistory) versionHistory, session);
-                        return true;
+                        return deleteOrphaned((VersionHistory) versionHistory, session);
                     }
                     return false;
                 }
@@ -159,18 +160,19 @@ public class CleanCommand implements Action {
         return false;
     }
 
-    private static void deleteOrphaned(VersionHistory vh, JCRSessionWrapper session) throws RepositoryException {
+    private static boolean deleteOrphaned(VersionHistory vh, JCRSessionWrapper session) throws RepositoryException {
         final NodeId id = NodeId.valueOf(vh.getIdentifier());
         final SessionImpl providerSession = (SessionImpl) session.getProviderSession(session.getNode("/").getProvider());
         final InternalVersionManager vm = providerSession.getInternalVersionManager();
         final List<InternalVersionHistory> unusedVersions = new ArrayList<>();
         unusedVersions.add(vm.getVersionHistory(id));
-
+        int[] results = {0, 0};
         if (vm instanceof InternalVersionManagerImpl) {
-            ((InternalVersionManagerImpl) vm).purgeVersions(providerSession, unusedVersions);
+            results = ((InternalVersionManagerImpl) vm).purgeVersions(providerSession, unusedVersions);
         } else if (vm instanceof InternalXAVersionManager) {
-            ((InternalXAVersionManager) vm).purgeVersions(providerSession, unusedVersions);
+            results = ((InternalXAVersionManager) vm).purgeVersions(providerSession, unusedVersions);
         }
+        return results[0] + results[1] > 0;
     }
 
     private static Long deleteVersions(JCRSessionWrapper session, String rootPath, Boolean checkIntegrity, Long nbVersionsToKeep, long start, Long maxExecutionTimeInMs) throws RepositoryException {
@@ -194,7 +196,7 @@ public class CleanCommand implements Action {
                 }
             }
             session.refresh(false);
-        } 
+        }
         return deletedVersions;
     }
 

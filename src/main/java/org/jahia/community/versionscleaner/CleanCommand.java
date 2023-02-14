@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jcr.ItemNotFoundException;
 import javax.jcr.Node;
 import javax.jcr.PathNotFoundException;
@@ -58,6 +59,7 @@ public class CleanCommand implements Action {
         Constants.JAHIANT_MEMBER,
         "jnt:reference"
     };
+    private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
 
     @Option(name = "-r", aliases = "--reindex-default-workspace", description = "Reindex default workspace before cleaning")
     private Boolean reindexDefaultWorkspace = Boolean.FALSE;
@@ -81,8 +83,13 @@ public class CleanCommand implements Action {
     }
 
     public static void deleteVersions(Boolean reindexDefaultWorkspace, Boolean checkIntegrity, Long nbVersionsToKeep, Long maxExecutionTimeInMs, Boolean deleteOrphanedVersions) throws RepositoryException {
+        deleteVersions(reindexDefaultWorkspace, checkIntegrity, nbVersionsToKeep, maxExecutionTimeInMs, deleteOrphanedVersions, new AtomicBoolean());
+    }
+
+    private static void deleteVersions(Boolean reindexDefaultWorkspace, Boolean checkIntegrity, Long nbVersionsToKeep, Long maxExecutionTimeInMs, Boolean deleteOrphanedVersions, AtomicBoolean interruptionHandler) throws RepositoryException {
         if (SettingsBean.getInstance().isProcessingServer()) {
 
+            if (needsToInterrupt(interruptionHandler)) return;
             if (reindexDefaultWorkspace.booleanValue()) {
                 final long start = System.currentTimeMillis();
                 LOGGER.info("Starting reindexing of default workspace");
@@ -92,11 +99,13 @@ public class CleanCommand implements Action {
                     LOGGER.info(String.format("Finished reindexing default workspace in %s", DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
                 }
             }
+
+            if (needsToInterrupt(interruptionHandler)) return;
             final long start = System.currentTimeMillis();
             long end;
             if (nbVersionsToKeep >= 0) {
                 LOGGER.info("Starting to delete versions");
-                final Long deletedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteVersions(session, VERSIONS_PATH, checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs));
+                final Long deletedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteVersions(session, VERSIONS_PATH, checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler));
                 end = System.currentTimeMillis();
                 if (LOGGER.isInfoEnabled()) {
                     LOGGER.info(String.format("Finished to delete %d versions in %s", deletedVersions, DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
@@ -108,7 +117,7 @@ public class CleanCommand implements Action {
                     LOGGER.info("Starting to delete orphaned versions");
                 }
                 final Long orphanStart = System.currentTimeMillis();
-                final Long deletedOrphanedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteOrphanedVersions(session, session.getNode(VERSIONS_PATH), start, maxExecutionTimeInMs));
+                final Long deletedOrphanedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteOrphanedVersions(session, session.getNode(VERSIONS_PATH), start, maxExecutionTimeInMs, interruptionHandler));
                 end = System.currentTimeMillis();
                 if (LOGGER.isInfoEnabled()) {
                     LOGGER.info(String.format("Finished to delete %d orphaned versions in %s", deletedOrphanedVersions, DurationFormatUtils.formatDuration(end - orphanStart, HUMAN_READABLE_FORMAT, true)));
@@ -119,9 +128,9 @@ public class CleanCommand implements Action {
         }
     }
 
-    private static Long deleteOrphanedVersions(JCRSessionWrapper session, JCRNodeWrapper startNode, long start, Long maxExecutionTimeInMs) {
+    private static Long deleteOrphanedVersions(JCRSessionWrapper session, JCRNodeWrapper startNode, long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler) {
         long deletedVersions = 0L;
-        if ((maxExecutionTimeInMs == 0 || System.currentTimeMillis() < start + maxExecutionTimeInMs)) {
+        if (canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
             try {
                 if (startNode.isNodeType(JcrConstants.NT_VERSIONHISTORY) && checkAndDeleteOrphanedVersionHistory(startNode, session)) {
                     deletedVersions++;
@@ -129,9 +138,9 @@ public class CleanCommand implements Action {
                 }
                 if (startNode.hasNodes()) {
                     final JCRNodeIteratorWrapper it = startNode.getNodes();
-                    while (it.hasNext()) {
+                    while (it.hasNext() && canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
                         JCRNodeWrapper node = (JCRNodeWrapper) it.next();
-                        deletedVersions = deletedVersions + deleteOrphanedVersions(session, node, start, maxExecutionTimeInMs);
+                        deletedVersions = deletedVersions + deleteOrphanedVersions(session, node, start, maxExecutionTimeInMs, interruptionHandler);
                     }
                 }
             } catch (Exception ex) {
@@ -175,12 +184,12 @@ public class CleanCommand implements Action {
         return results[0] + results[1] > 0;
     }
 
-    private static Long deleteVersions(JCRSessionWrapper session, String rootPath, Boolean checkIntegrity, Long nbVersionsToKeep, long start, Long maxExecutionTimeInMs) throws RepositoryException {
+    private static Long deleteVersions(JCRSessionWrapper session, String rootPath, Boolean checkIntegrity, Long nbVersionsToKeep, long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler) throws RepositoryException {
         long deletedVersions = 0L;
-        if (maxExecutionTimeInMs == 0 || System.currentTimeMillis() < start + maxExecutionTimeInMs) {
+        if (canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
             final JCRNodeWrapper rootNodeWrapper = session.getNode(rootPath, false);
             final JCRNodeIteratorWrapper childNodeIterator = rootNodeWrapper.getNodes();
-            while (childNodeIterator.hasNext()) {
+            while (childNodeIterator.hasNext() && canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
                 final JCRNodeWrapper childNode = (JCRNodeWrapper) childNodeIterator.next();
                 long newDeletedVersions;
                 if (childNode.getNodeTypes().contains(JcrConstants.NT_VERSIONHISTORY)) {
@@ -189,7 +198,7 @@ public class CleanCommand implements Action {
                     }
                     newDeletedVersions = keepLastNVersions((VersionHistory) childNode, nbVersionsToKeep, session);
                 } else {
-                    newDeletedVersions = deleteVersions(session, childNode.getPath(), checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs);
+                    newDeletedVersions = deleteVersions(session, childNode.getPath(), checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler);
                 }
                 if (newDeletedVersions > 0L) {
                     deletedVersions = deletedVersions + newDeletedVersions;
@@ -383,5 +392,19 @@ public class CleanCommand implements Action {
             }
         }
         return false;
+    }
+
+    private static boolean canContinue(long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler) {
+        if (needsToInterrupt(interruptionHandler)) return false;
+        return maxExecutionTimeInMs == 0 || System.currentTimeMillis() < start + maxExecutionTimeInMs;
+    }
+
+    private static boolean needsToInterrupt(AtomicBoolean interruptionHandler) {
+        if (Boolean.getBoolean(INTERRUPT_MARKER)) {
+            LOGGER.info("Interrupting the process");
+            System.clearProperty(INTERRUPT_MARKER);
+            interruptionHandler.set(true);
+        }
+        return interruptionHandler.get();
     }
 }

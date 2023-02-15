@@ -42,7 +42,8 @@ Name | alias | Mandatory | Value | Description
 
 ### <a name="how-to-interrupt"></a>How to interrupt an execution?
                                                            
-Run the below code in a Groovy console
+Run the below code in a Groovy console.
+In case of a Jahia Cluster, this has to be executed on the JVM where the purge is running. If you have triggered it with the Karaf command, this means the same server. If you use the scheduled background execution, this means the procesing server.
 
 ```
 System.setProperty("versions-cleaner.interrupt", "true")

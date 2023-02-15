@@ -5,6 +5,7 @@ Jahia module to clean versions by:
  
 * [How to use it](#how-to-use)
     * [cleaners-version:keep-n](#cleaners-version-keep-n)
+    * [How to interrupt an execution?](#how-to-interrupt)
 
 ## <a name="how-to-use"></a>How to use?
 
@@ -38,4 +39,12 @@ Name | alias | Mandatory | Value | Description
 **Example:**
 
     cleaners-version:keep-n 
+
+### <a name="how-to-interrupt"></a>How to interrupt an execution?
+                                                           
+Run the below code in a Groovy console
+
+```
+System.setProperty("versions-cleaner.interrupt", "true")
+```
 

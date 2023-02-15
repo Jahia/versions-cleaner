@@ -9,14 +9,14 @@
     <groupId>org.jahia.community</groupId>
     <artifactId>versions-cleaner</artifactId>
     <name>Versions cleaner</name>
-    <version>1.0.1</version>    
+    <version>1.0.2-SNAPSHOT</version>    
     <packaging>bundle</packaging>
     <description>This is a module to clean the versions by only keepin the last N versions of a content and also by removing the orphaned versions.</description>
 
     <scm>
         <connection>scm:git:git@github.com:Jahia/versions-cleaner</connection>
         <developerConnection>scm:git:git@github.com:Jahia/versions-cleaner</developerConnection>
-      <tag>1_0_1</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <properties>

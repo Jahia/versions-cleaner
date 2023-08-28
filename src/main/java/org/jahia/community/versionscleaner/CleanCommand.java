@@ -22,6 +22,7 @@ import javax.jcr.nodetype.ConstraintViolationException;
 import javax.jcr.version.Version;
 import javax.jcr.version.VersionHistory;
 import javax.jcr.version.VersionIterator;
+
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.core.JahiaRepositoryImpl;
@@ -55,9 +56,9 @@ public class CleanCommand implements Action {
     private static final String HUMAN_READABLE_FORMAT = "d' days 'H' hours 'm' minutes 's' seconds'";
     private static final String VERSIONS_PATH = "/jcr:system/jcr:versionStorage";
     private static final String[] INVALID_REFERENCE_NODE_TYPES_TO_REMOVE = new String[]{
-        JcrConstants.NT_HIERARCHYNODE,
-        Constants.JAHIANT_MEMBER,
-        "jnt:reference"
+            JcrConstants.NT_HIERARCHYNODE,
+            Constants.JAHIANT_MEMBER,
+            "jnt:reference"
     };
     private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
 
@@ -90,7 +91,7 @@ public class CleanCommand implements Action {
         if (SettingsBean.getInstance().isProcessingServer()) {
 
             if (needsToInterrupt(interruptionHandler)) return;
-            if (reindexDefaultWorkspace.booleanValue()) {
+            if (reindexDefaultWorkspace) {
                 final long start = System.currentTimeMillis();
                 LOGGER.info("Starting reindexing of default workspace");
                 ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
@@ -112,11 +113,11 @@ public class CleanCommand implements Action {
                 }
             }
 
-            if (deleteOrphanedVersions.booleanValue()) {
+            if (deleteOrphanedVersions) {
                 if (LOGGER.isInfoEnabled()) {
                     LOGGER.info("Starting to delete orphaned versions");
                 }
-                final Long orphanStart = System.currentTimeMillis();
+                final long orphanStart = System.currentTimeMillis();
                 final Long deletedOrphanedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteOrphanedVersions(session, session.getNode(VERSIONS_PATH), start, maxExecutionTimeInMs, interruptionHandler));
                 end = System.currentTimeMillis();
                 if (LOGGER.isInfoEnabled()) {
@@ -193,7 +194,7 @@ public class CleanCommand implements Action {
                 final JCRNodeWrapper childNode = (JCRNodeWrapper) childNodeIterator.next();
                 long newDeletedVersions;
                 if (childNode.getNodeTypes().contains(JcrConstants.NT_VERSIONHISTORY)) {
-                    if (checkIntegrity.booleanValue()) {
+                    if (checkIntegrity) {
                         processNode(session, childNode, true, true);
                     }
                     newDeletedVersions = keepLastNVersions((VersionHistory) childNode, nbVersionsToKeep, session);
@@ -238,7 +239,7 @@ public class CleanCommand implements Action {
     }
 
     private static void processNode(Session session, Node node,
-            boolean fix, boolean referencesCheck) throws RepositoryException {
+                                    boolean fix, boolean referencesCheck) throws RepositoryException {
         try {
             if (fix || referencesCheck) {
                 PropertyIterator propertyIterator = node.getProperties();
@@ -270,7 +271,7 @@ public class CleanCommand implements Action {
     }
 
     private static boolean processPropertyValue(Session session, Node node, Property property, Value propertyValue,
-            boolean fix, boolean referencesCheck) throws RepositoryException {
+                                                boolean fix, boolean referencesCheck) throws RepositoryException {
         int propertyType = propertyValue.getType();
         switch (propertyType) {
             case PropertyType.REFERENCE:
@@ -307,75 +308,10 @@ public class CleanCommand implements Action {
                     LOGGER.info(String.format("Couldn't find referenced node with UUID %s referenced from property %s", uuid, property.getPath()));
                     if (fix) {
                         if (mustRemoveParentNode(node)) {
-                            LOGGER.info(String.format("Fixing invalid reference by removing node %s from repository...", node.getPath()));
-                            Node parentNode = node.getParent();
-                            Calendar originalLastModificationDate = null;
-                            try {
-                                originalLastModificationDate = parentNode.getProperty(Constants.JCR_LASTMODIFIED).getDate();
-                            } catch (PathNotFoundException pnfe) {
-                                originalLastModificationDate = null;
-                            }
-                            Session nodeSession = node.getSession();
-                            if (!parentNode.isCheckedOut()) {
-                                nodeSession.getWorkspace().getVersionManager().checkout(parentNode.getPath());
-                            }
-                            node.remove();
-                            nodeSession.save();
-                            // let's reload the node to make sure we don't have any cache issues.
-                            parentNode = nodeSession.getNodeByIdentifier(parentNode.getIdentifier());
-                            Calendar newLastModificationDate;
-                            try {
-                                newLastModificationDate = parentNode.getProperty(Constants.JCR_LASTMODIFIED).getDate();
-                            } catch (PathNotFoundException pnfe) {
-                                newLastModificationDate = null;
-                            }
-                            if (newLastModificationDate == null && originalLastModificationDate == null) {
-                                // do nothing, they are equal
-                            } else if (((newLastModificationDate != null) && (originalLastModificationDate == null))
-                                    || ((newLastModificationDate == null) && (originalLastModificationDate != null))
-                                    || (!newLastModificationDate.equals(originalLastModificationDate))) {
-                                parentNode.setProperty(Constants.JCR_LASTMODIFIED, originalLastModificationDate);
-                                nodeSession.save();
-                            }
+                            fixInvalidNodeReference(node);
                             return false;
                         } else {
-                            LOGGER.info(String.format("Fixing invalid reference by setting reference property %s to null...", property.getPath()));
-                            Calendar originalLastModificationDate;
-                            try {
-                                originalLastModificationDate = node.getProperty(Constants.JCR_LASTMODIFIED).getDate();
-                            } catch (PathNotFoundException pnfe) {
-                                originalLastModificationDate = null;
-                            }
-                            if (property.isMultiple()) {
-                                Value[] oldValues = property.getValues();
-                                List<Value> newValues = new LinkedList<>();
-                                for (Value oldValue : oldValues) {
-                                    if (!oldValue.getString().equals(uuid)) {
-                                        newValues.add(oldValue);
-                                    }
-                                }
-                                property.setValue(newValues.toArray(new Value[]{}));
-                            } else {
-                                property.setValue((Value) null);
-                            }
-                            Session nodeSession = node.getSession();
-                            nodeSession.save();
-                            // let's reload the node to make sure we don't have any cache issues.
-                            node = nodeSession.getNodeByIdentifier(node.getIdentifier());
-                            Calendar newLastModificationDate;
-                            try {
-                                newLastModificationDate = node.getProperty(Constants.JCR_LASTMODIFIED).getDate();
-                            } catch (PathNotFoundException pnfe) {
-                                newLastModificationDate = null;
-                            }
-                            if (newLastModificationDate == null && originalLastModificationDate == null) {
-                                // do nothing, they are equal
-                            } else if (((newLastModificationDate != null) && (originalLastModificationDate == null))
-                                    || ((newLastModificationDate == null) && (originalLastModificationDate != null))
-                                    || (!newLastModificationDate.equals(originalLastModificationDate))) {
-                                node.setProperty(Constants.JCR_LASTMODIFIED, originalLastModificationDate);
-                                nodeSession.save();
-                            }
+                            fixInvalidPropertyReference(node, property, uuid);
                         }
                     }
                 }
@@ -383,6 +319,79 @@ public class CleanCommand implements Action {
             default:
         }
         return true;
+    }
+
+    private static void fixInvalidPropertyReference(Node node, Property property, String uuid) throws RepositoryException {
+        LOGGER.info(String.format("Fixing invalid reference by setting reference property %s to null...", property.getPath()));
+        Calendar originalLastModificationDate;
+        try {
+            originalLastModificationDate = node.getProperty(Constants.JCR_LASTMODIFIED).getDate();
+        } catch (PathNotFoundException pnfe) {
+            originalLastModificationDate = null;
+        }
+        if (property.isMultiple()) {
+            Value[] oldValues = property.getValues();
+            List<Value> newValues = new LinkedList<>();
+            for (Value oldValue : oldValues) {
+                if (!oldValue.getString().equals(uuid)) {
+                    newValues.add(oldValue);
+                }
+            }
+            property.setValue(newValues.toArray(new Value[]{}));
+        } else {
+            property.setValue((Value) null);
+        }
+        Session nodeSession = node.getSession();
+        nodeSession.save();
+        // let's reload the node to make sure we don't have any cache issues.
+        node = nodeSession.getNodeByIdentifier(node.getIdentifier());
+        Calendar newLastModificationDate;
+        try {
+            newLastModificationDate = node.getProperty(Constants.JCR_LASTMODIFIED).getDate();
+        } catch (PathNotFoundException pnfe) {
+            newLastModificationDate = null;
+        }
+        if (newLastModificationDate == null && originalLastModificationDate == null) {
+            // do nothing, they are equal
+        } else if (((newLastModificationDate != null) && (originalLastModificationDate == null))
+                || ((newLastModificationDate == null) && (originalLastModificationDate != null))
+                || (!newLastModificationDate.equals(originalLastModificationDate))) {
+            node.setProperty(Constants.JCR_LASTMODIFIED, originalLastModificationDate);
+            nodeSession.save();
+        }
+    }
+
+    private static void fixInvalidNodeReference(Node node) throws RepositoryException {
+        LOGGER.info(String.format("Fixing invalid reference by removing node %s from repository...", node.getPath()));
+        Node parentNode = node.getParent();
+        Calendar originalLastModificationDate;
+        try {
+            originalLastModificationDate = parentNode.getProperty(Constants.JCR_LASTMODIFIED).getDate();
+        } catch (PathNotFoundException pnfe) {
+            originalLastModificationDate = null;
+        }
+        Session nodeSession = node.getSession();
+        if (!parentNode.isCheckedOut()) {
+            nodeSession.getWorkspace().getVersionManager().checkout(parentNode.getPath());
+        }
+        node.remove();
+        nodeSession.save();
+        // let's reload the node to make sure we don't have any cache issues.
+        parentNode = nodeSession.getNodeByIdentifier(parentNode.getIdentifier());
+        Calendar newLastModificationDate;
+        try {
+            newLastModificationDate = parentNode.getProperty(Constants.JCR_LASTMODIFIED).getDate();
+        } catch (PathNotFoundException pnfe) {
+            newLastModificationDate = null;
+        }
+        if (newLastModificationDate == null && originalLastModificationDate == null) {
+            // do nothing, they are equal
+        } else if (((newLastModificationDate != null) && (originalLastModificationDate == null))
+                || ((newLastModificationDate == null) && (originalLastModificationDate != null))
+                || (!newLastModificationDate.equals(originalLastModificationDate))) {
+            parentNode.setProperty(Constants.JCR_LASTMODIFIED, originalLastModificationDate);
+            nodeSession.save();
+        }
     }
 
     private static boolean mustRemoveParentNode(Node node) throws RepositoryException {

@@ -56,9 +56,9 @@ public class CleanCommand implements Action {
     private static final String HUMAN_READABLE_FORMAT = "d' days 'H' hours 'm' minutes 's' seconds'";
     private static final String VERSIONS_PATH = "/jcr:system/jcr:versionStorage";
     private static final String[] INVALID_REFERENCE_NODE_TYPES_TO_REMOVE = new String[]{
-            JcrConstants.NT_HIERARCHYNODE,
-            Constants.JAHIANT_MEMBER,
-            "jnt:reference"
+        JcrConstants.NT_HIERARCHYNODE,
+        Constants.JAHIANT_MEMBER,
+        "jnt:reference"
     };
     private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
 
@@ -84,13 +84,15 @@ public class CleanCommand implements Action {
     }
 
     public static void deleteVersions(Boolean reindexDefaultWorkspace, Boolean checkIntegrity, Long nbVersionsToKeep, Long maxExecutionTimeInMs, Boolean deleteOrphanedVersions) throws RepositoryException {
-        deleteVersions(reindexDefaultWorkspace, checkIntegrity, nbVersionsToKeep, maxExecutionTimeInMs, deleteOrphanedVersions, new AtomicBoolean());
+        deleteVersions(reindexDefaultWorkspace, checkIntegrity, nbVersionsToKeep * 2, maxExecutionTimeInMs, deleteOrphanedVersions, new AtomicBoolean());
     }
 
     private static void deleteVersions(Boolean reindexDefaultWorkspace, Boolean checkIntegrity, Long nbVersionsToKeep, Long maxExecutionTimeInMs, Boolean deleteOrphanedVersions, AtomicBoolean interruptionHandler) throws RepositoryException {
         if (SettingsBean.getInstance().isProcessingServer()) {
 
-            if (needsToInterrupt(interruptionHandler)) return;
+            if (needsToInterrupt(interruptionHandler)) {
+                return;
+            }
             if (reindexDefaultWorkspace) {
                 final long start = System.currentTimeMillis();
                 LOGGER.info("Starting reindexing of default workspace");
@@ -101,15 +103,21 @@ public class CleanCommand implements Action {
                 }
             }
 
-            if (needsToInterrupt(interruptionHandler)) return;
+            if (needsToInterrupt(interruptionHandler)) {
+                return;
+            }
             final long start = System.currentTimeMillis();
             long end;
             if (nbVersionsToKeep >= 0) {
                 LOGGER.info("Starting to delete versions");
-                final Long deletedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteVersions(session, VERSIONS_PATH, checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler));
-                end = System.currentTimeMillis();
-                if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info(String.format("Finished to delete %d versions in %s", deletedVersions, DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
+                try ( Connection conn = DatabaseUtils.getDatasource().getConnection()) {
+                    final Long deletedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteVersions(session, VERSIONS_PATH, checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler, conn));
+                    end = System.currentTimeMillis();
+                    if (LOGGER.isInfoEnabled()) {
+                        LOGGER.info(String.format("Finished to delete %d versions in %s", deletedVersions, DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
+                    }
+                } catch (SQLException ex) {
+                    LOGGER.error("Impossible to retrieve DB connection", ex);
                 }
             }
 
@@ -185,7 +193,7 @@ public class CleanCommand implements Action {
         return results[0] + results[1] > 0;
     }
 
-    private static Long deleteVersions(JCRSessionWrapper session, String rootPath, Boolean checkIntegrity, Long nbVersionsToKeep, long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler) throws RepositoryException {
+    private static Long deleteVersions(JCRSessionWrapper session, String rootPath, Boolean checkIntegrity, Long nbVersionsToKeep, long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler, Connection conn) throws RepositoryException {
         long deletedVersions = 0L;
         if (canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
             final JCRNodeWrapper rootNodeWrapper = session.getNode(rootPath, false);
@@ -195,11 +203,11 @@ public class CleanCommand implements Action {
                 long newDeletedVersions;
                 if (childNode.getNodeTypes().contains(JcrConstants.NT_VERSIONHISTORY)) {
                     if (checkIntegrity) {
-                        processNode(session, childNode, true, true);
+                        processNode(session, childNode, true, true, conn);
                     }
-                    newDeletedVersions = keepLastNVersions((VersionHistory) childNode, nbVersionsToKeep, session);
+                    newDeletedVersions = keepLastNVersions((VersionHistory) childNode, nbVersionsToKeep, session, conn);
                 } else {
-                    newDeletedVersions = deleteVersions(session, childNode.getPath(), checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler);
+                    newDeletedVersions = deleteVersions(session, childNode.getPath(), checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler, conn);
                 }
                 if (newDeletedVersions > 0L) {
                     deletedVersions = deletedVersions + newDeletedVersions;
@@ -210,7 +218,7 @@ public class CleanCommand implements Action {
         return deletedVersions;
     }
 
-    private static long keepLastNVersions(VersionHistory vh, Long nbVersionsToKeep, JCRSessionWrapper session) {
+    private static long keepLastNVersions(VersionHistory vh, Long nbVersionsToKeep, JCRSessionWrapper session, Connection conn) {
         long deletedVersions = 0L;
 
         try {
@@ -221,7 +229,7 @@ public class CleanCommand implements Action {
                 final long maxPosition = nbVersions - nbVersionsToKeep;
                 while (versionIterator.hasNext() && versionIterator.getPosition() < maxPosition) {
                     final Version version = versionIterator.nextVersion();
-                    processNode(session, version, true, true);
+                    processNode(session, version, true, true, conn);
                     final String versionName = version.getName();
                     if (version.getReferences().getSize() == 0 && !JcrConstants.JCR_ROOTVERSION.equals(versionName)) {
                         unusedVersionsName.add(versionName);
@@ -239,7 +247,7 @@ public class CleanCommand implements Action {
     }
 
     private static void processNode(Session session, Node node,
-                                    boolean fix, boolean referencesCheck) throws RepositoryException {
+            boolean fix, boolean referencesCheck, Connection conn) throws RepositoryException {
         try {
             if (fix || referencesCheck) {
                 PropertyIterator propertyIterator = node.getProperties();
@@ -249,7 +257,7 @@ public class CleanCommand implements Action {
                         try {
                             Value[] values = property.getValues();
                             for (Value value : values) {
-                                if (!processPropertyValue(session, node, property, value, fix, referencesCheck)) {
+                                if (!processPropertyValue(session, node, property, value, fix, referencesCheck, conn)) {
                                     return;
                                 }
                             }
@@ -258,7 +266,7 @@ public class CleanCommand implements Action {
                             LOGGER.warn(String.format("Warning: Property definition for node %s is missing", node.getPath()), ex);
                         }
                     } else {
-                        if (!processPropertyValue(session, node, property, property.getValue(), fix, referencesCheck)) {
+                        if (!processPropertyValue(session, node, property, property.getValue(), fix, referencesCheck, conn)) {
                             return;
                         }
                     }
@@ -271,7 +279,7 @@ public class CleanCommand implements Action {
     }
 
     private static boolean processPropertyValue(Session session, Node node, Property property, Value propertyValue,
-                                                boolean fix, boolean referencesCheck) throws RepositoryException {
+            boolean fix, boolean referencesCheck, Connection conn) throws RepositoryException {
         int propertyType = propertyValue.getType();
         switch (propertyType) {
             case PropertyType.REFERENCE:
@@ -283,11 +291,9 @@ public class CleanCommand implements Action {
                 try {
                     session.getNodeByIdentifier(uuid);
                 } catch (ItemNotFoundException infe) {
-                    Connection conn = null;
                     PreparedStatement statement = null;
                     ResultSet resultSet = null;
                     try {
-                        conn = DatabaseUtils.getDatasource().getConnection();
                         statement = conn.prepareStatement("select * from jahia_external_mapping where internalUuid=?");
                         statement.setString(1, uuid);
                         resultSet = statement.executeQuery();
@@ -298,12 +304,11 @@ public class CleanCommand implements Action {
                             }
                             break;
                         }
-                    } catch (SQLException throwables) {
+                    } catch (SQLException ex) {
                         //uuid is not an external reference
                     } finally {
                         DatabaseUtils.closeQuietly(resultSet);
                         DatabaseUtils.closeQuietly(statement);
-                        DatabaseUtils.closeQuietly(conn);
                     }
                     LOGGER.info(String.format("Couldn't find referenced node with UUID %s referenced from property %s", uuid, property.getPath()));
                     if (fix) {
@@ -404,7 +409,9 @@ public class CleanCommand implements Action {
     }
 
     private static boolean canContinue(long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler) {
-        if (needsToInterrupt(interruptionHandler)) return false;
+        if (needsToInterrupt(interruptionHandler)) {
+            return false;
+        }
         return maxExecutionTimeInMs == 0 || System.currentTimeMillis() < start + maxExecutionTimeInMs;
     }
 

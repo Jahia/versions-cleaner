@@ -9,21 +9,22 @@
     <groupId>org.jahia.community</groupId>
     <artifactId>versions-cleaner</artifactId>
     <name>Versions cleaner</name>
-    <version>2.0.2-SNAPSHOT</version>
+    <version>2.0.2-SNAPSHOT</version>    
     <packaging>bundle</packaging>
     <description>This is a module to clean the versions by only keepin the last N versions of a content and also by removing the orphaned versions.</description>
 
     <scm>
         <connection>scm:git:git@github.com:Jahia/versions-cleaner</connection>
         <developerConnection>scm:git:git@github.com:Jahia/versions-cleaner</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <export-package>org.jahia.community.versionscleaner</export-package>
         <jahia-depends>default</jahia-depends>
         <jahia-module-type>system</jahia-module-type>
         <require-capability>osgi.extender;filter:="(osgi.extender=org.jahia.bundles.blueprint.extender.config)"</require-capability>
+        <jahia-plugin-version>6.7</jahia-plugin-version>
     </properties>
 
     <repositories>
@@ -40,7 +41,7 @@
             </snapshots>
         </repository>
     </repositories>
-
+    
     <dependencies>
         <dependency>
             <groupId>org.apache.karaf.shell</groupId>
@@ -63,9 +64,18 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
+                        <Bundle-RequiredExecutionEnvironment>JavaSE-11</Bundle-RequiredExecutionEnvironment>
                         <Karaf-Commands>*</Karaf-Commands>
                         <_dsannotations>*</_dsannotations>
                     </instructions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <release>11</release>
                 </configuration>
             </plugin>
         </plugins>

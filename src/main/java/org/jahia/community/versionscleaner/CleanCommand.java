@@ -37,14 +37,18 @@ import org.apache.karaf.shell.api.action.Command;
 import org.apache.karaf.shell.api.action.Option;
 import org.apache.karaf.shell.api.action.lifecycle.Service;
 import org.jahia.api.Constants;
+import org.jahia.registries.ServicesRegistry;
 import org.jahia.services.content.JCRNodeIteratorWrapper;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.content.JCRTemplate;
 import org.jahia.services.content.impl.jackrabbit.SpringJackrabbitRepository;
+import org.jahia.services.scheduler.SchedulerService;
 import org.jahia.settings.SettingsBean;
 import org.jahia.utils.DatabaseUtils;
+import org.quartz.JobDetail;
+import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,13 +97,35 @@ public class CleanCommand implements Action {
             if (needsToInterrupt(interruptionHandler)) {
                 return;
             }
-            if (reindexDefaultWorkspace) {
-                final long start = System.currentTimeMillis();
-                LOGGER.info("Starting reindexing of default workspace");
-                ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
-                final long end = System.currentTimeMillis();
-                if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info(String.format("Finished reindexing default workspace in %s", DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
+            if (reindexDefaultWorkspace.booleanValue()) {
+                try {
+                    final long start = System.currentTimeMillis();
+                    LOGGER.info("Starting reindexing of default workspace");
+                    ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
+                    final SchedulerService schedulerService = ServicesRegistry.getInstance().getSchedulerService();
+                    boolean continueChecking = true;
+                    while (continueChecking) {
+                        Thread.sleep(5000L);
+                        boolean reindexInProgress = false;
+                        final List<JobDetail> jobs = schedulerService.getAllRAMJobs();
+                        for (JobDetail job : jobs) {
+                            if (job.getName().startsWith("JahiaSearchIndex") && !"successful".equals(job.getJobDataMap().getString("status"))) {
+                                reindexInProgress = true;
+                                LOGGER.info("Reindexing is still in progress");
+                            }
+                        }
+                        continueChecking = continueChecking && reindexInProgress;
+                    }
+
+                    final long end = System.currentTimeMillis();
+                    if (LOGGER.isInfoEnabled()) {
+                        LOGGER.info(String.format("Finished reindexing default workspace in %s", DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
+                    }
+                } catch (SchedulerException ex) {
+                    LOGGER.error("Impossible to monitor reindexing job", ex);
+                } catch (InterruptedException ex) {
+                    LOGGER.error("Impossible to pause the thread", ex);
+                    Thread.currentThread().interrupt();
                 }
             }
 
@@ -121,7 +147,7 @@ public class CleanCommand implements Action {
                 }
             }
 
-            if (deleteOrphanedVersions) {
+            if (deleteOrphanedVersions.booleanValue()) {
                 if (LOGGER.isInfoEnabled()) {
                     LOGGER.info("Starting to delete orphaned versions");
                 }
@@ -202,7 +228,7 @@ public class CleanCommand implements Action {
                 final JCRNodeWrapper childNode = (JCRNodeWrapper) childNodeIterator.next();
                 long newDeletedVersions;
                 if (childNode.getNodeTypes().contains(JcrConstants.NT_VERSIONHISTORY)) {
-                    if (checkIntegrity) {
+                    if (checkIntegrity.booleanValue()) {
                         processNode(session, childNode, true, true, conn);
                     }
                     newDeletedVersions = keepLastNVersions((VersionHistory) childNode, nbVersionsToKeep, session, conn);

@@ -24,7 +24,8 @@
         <jahia-depends>default</jahia-depends>
         <jahia-module-type>system</jahia-module-type>
         <require-capability>osgi.extender;filter:="(osgi.extender=org.jahia.bundles.blueprint.extender.config)"</require-capability>
-        <jahia-plugin-version>6.7</jahia-plugin-version>
+        <jahia.plugin.version>6.9</jahia.plugin.version>
+        <maven.bundle.plugin.version>5.1.9</maven.bundle.plugin.version>
     </properties>
 
     <repositories>

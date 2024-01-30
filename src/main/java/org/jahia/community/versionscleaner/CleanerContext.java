@@ -1,11 +1,20 @@
 package org.jahia.community.versionscleaner;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jahia.bin.filters.jcr.JcrSessionFilter;
+import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.jcr.RepositoryException;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -35,6 +44,9 @@ public class CleanerContext {
     private Connection dbConnection;
     private JCRSessionWrapper editSession;
     private JCRSessionWrapper liveSession;
+    private String currentPosition;
+    private boolean searchPosition;
+    private String lastScanPosition;
 
     public CleanerContext() {
         interruptionHandler = new AtomicBoolean();
@@ -47,6 +59,9 @@ public class CleanerContext {
         deletedVersionHistoriesCount = 0L;
         deletedOrphanVersionsCount = 0L;
         deletedOrphanVersionHistoriesCount = 0L;
+        currentPosition = null;
+        lastScanPosition = loadLastScanPosition();
+        searchPosition = restartFromLastPosition && lastScanPosition != null;
     }
 
     public void finalizeProcess() {
@@ -54,6 +69,48 @@ public class CleanerContext {
         editSession = null;
         liveSession = null;
         JcrSessionFilter.endRequest();
+        saveLastPosition();
+    }
+
+    public boolean canProcess(JCRNodeWrapper vh) throws RepositoryException {
+        currentPosition = vh.getParent().getPath();
+        if (searchPosition) {
+            searchPosition = !StringUtils.equals(currentPosition, lastScanPosition);
+            if (!searchPosition) logger.info("Restarting from {}", currentPosition);
+        }
+        return searchPosition;
+    }
+
+    private String loadLastScanPosition() {
+        final File outputDir = new File(System.getProperty("java.io.tmpdir"), "versions-cleaner");
+        try {
+            final List<String> lines = FileUtils.readLines(new File(outputDir, "lastPosition.txt"), StandardCharsets.UTF_8);
+            if (CollectionUtils.isNotEmpty(lines)) return lines.get(0);
+        } catch (IOException e) {
+            logger.error("", e);
+        }
+        return null;
+    }
+
+    private void saveLastPosition() {
+        final File outputDir = new File(System.getProperty("java.io.tmpdir"), "versions-cleaner");
+        final boolean folderCreated = outputDir.exists() || outputDir.mkdirs();
+        if (folderCreated && outputDir.canWrite()) {
+            try {
+                final File file = new File(outputDir, "lastPosition.txt");
+                if (currentPosition == null) {
+                    file.delete();
+                } else {
+                    FileUtils.writeLines(file, StandardCharsets.UTF_8.name(), Collections.singleton(currentPosition));
+                }
+            } catch (IOException e) {
+                logger.error("", e);
+            }
+        }
+    }
+
+    public void endOfTreeReached() {
+        currentPosition = null;
     }
 
     public boolean deleteNonOrphanVersions() {

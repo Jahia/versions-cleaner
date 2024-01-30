@@ -95,6 +95,9 @@ public class CleanCommand implements Action {
     @Option(name = "--threshold-long-history-purge-strategy")
     private long thresholdLongHistoryPurgeStrategy = 1000L;
 
+    @Option(name = "--restart-from-last-position")
+    private boolean restartFromLastPosition = false;
+
     @Override
     public Object execute() throws RepositoryException {
         final CleanerContext context = new CleanerContext()
@@ -106,7 +109,8 @@ public class CleanCommand implements Action {
                 .setSubtreePath(subtreePath)
                 .setPauseDuration(pauseDuration)
                 .setSkippedPaths(skippedPaths)
-                .setThresholdLongHistoryPurgeStrategy(thresholdLongHistoryPurgeStrategy);
+                .setThresholdLongHistoryPurgeStrategy(thresholdLongHistoryPurgeStrategy)
+                .setRestartFromLastPosition(restartFromLastPosition);
 
         execute(context);
         return null;
@@ -189,6 +193,7 @@ public class CleanCommand implements Action {
                 processNode(node, context);
                 logger.info(String.format("Finished to scan the versions under %s in %s", node.getPath(), toReadableDuration(context.getStartTime())));
                 printDeletionSummary(context);
+                if (!needsToInterrupt(context)) context.endOfTreeReached();
             } catch (SQLException e) {
                 logger.error("Failed to retrieve the DB connection", e);
             }
@@ -207,6 +212,7 @@ public class CleanCommand implements Action {
         }
 
         if (node.isNodeType(Constants.NT_VERSIONHISTORY)) {
+            if (!context.canProcess(node)) return;
             checkNodeIntegrity(context.getEditSession(), node, true, true, context);
             if (isOrphanedHistory(node, context)) {
                 deleteOrphanedHistory((VersionHistory) node, context);

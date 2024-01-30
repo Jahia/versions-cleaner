@@ -22,6 +22,7 @@ public class CleanerContext {
 
     private static final Logger logger = LoggerFactory.getLogger(CleanerContext.class);
 
+    private final AtomicBoolean interruptionHandler;
     private boolean reindexDefaultWorkspace = Boolean.FALSE;
     private boolean checkIntegrity = Boolean.FALSE;
     private long nbVersionsToKeep = -1L;
@@ -34,7 +35,6 @@ public class CleanerContext {
     private boolean runAsynchronously = Boolean.TRUE;
     private long thresholdLongHistoryPurgeStrategy = 1000;
     private boolean useVersioningApi = Boolean.FALSE;
-    private AtomicBoolean interruptionHandler;
     private long startTime;
     private long deletedVersionsCount;
     private long deletedVersionHistoriesCount;

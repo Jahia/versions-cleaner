@@ -1,28 +1,7 @@
 package org.jahia.community.versionscleaner;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import javax.jcr.ItemNotFoundException;
-import javax.jcr.Node;
-import javax.jcr.PathNotFoundException;
-import javax.jcr.Property;
-import javax.jcr.PropertyIterator;
-import javax.jcr.PropertyType;
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
-import javax.jcr.Value;
-import javax.jcr.nodetype.ConstraintViolationException;
-import javax.jcr.version.Version;
-import javax.jcr.version.VersionHistory;
-import javax.jcr.version.VersionIterator;
-
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.core.JahiaRepositoryImpl;
@@ -41,8 +20,6 @@ import org.jahia.registries.ServicesRegistry;
 import org.jahia.services.content.JCRNodeIteratorWrapper;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
-import org.jahia.services.content.JCRSessionWrapper;
-import org.jahia.services.content.JCRTemplate;
 import org.jahia.services.content.impl.jackrabbit.SpringJackrabbitRepository;
 import org.jahia.services.scheduler.SchedulerService;
 import org.jahia.settings.SettingsBean;
@@ -51,12 +28,37 @@ import org.quartz.JobDetail;
 import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StopWatch;
+
+import javax.jcr.ItemNotFoundException;
+import javax.jcr.Node;
+import javax.jcr.PathNotFoundException;
+import javax.jcr.Property;
+import javax.jcr.PropertyIterator;
+import javax.jcr.PropertyType;
+import javax.jcr.RangeIterator;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+import javax.jcr.Value;
+import javax.jcr.nodetype.ConstraintViolationException;
+import javax.jcr.version.Version;
+import javax.jcr.version.VersionHistory;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.Executors;
 
 @Command(scope = "versions-cleaner", name = "keep-n", description = "Delete all version except the last N versions")
 @Service
 public class CleanCommand implements Action {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CleanCommand.class);
+    private static final Logger logger = LoggerFactory.getLogger(CleanCommand.class);
     private static final String HUMAN_READABLE_FORMAT = "d' days 'H' hours 'm' minutes 's' seconds'";
     private static final String VERSIONS_PATH = "/jcr:system/jcr:versionStorage";
     private static final String[] INVALID_REFERENCE_NODE_TYPES_TO_REMOVE = new String[]{
@@ -73,7 +75,7 @@ public class CleanCommand implements Action {
     private Boolean checkIntegrity = Boolean.FALSE;
 
     @Option(name = "-n", aliases = "--nb-versions-to-keep", description = "Number of versions to keep")
-    private Long nbVersionsToKeep = 2L;
+    private Long nbVersionsToKeep = -1L;
 
     @Option(name = "-t", aliases = "--max-execution-time-in-ms", description = "Max execution time in ms")
     private Long maxExecutionTimeInMs = 0L;
@@ -81,121 +83,168 @@ public class CleanCommand implements Action {
     @Option(name = "-o", aliases = "--delete-orphaned-versions", description = "Delete orphaned versions")
     private Boolean deleteOrphanedVersions = Boolean.FALSE;
 
+    @Option(name = "-p", aliases = "--subtree-path", description = "Subtree of versions tree where the purge has to be run. Must start with a /")
+    private String subtreePath = null;
+
+    @Option(name = "-pause", description = "Duration of the pause between 2 version deletions. No pause if less or equal to zero")
+    private Long pauseDuration = 0L;
+
+    @Option(name = "-skip", description = "--skip-subtree", multiValued = true)
+    private List<String> skippedPaths;
+
+    @Option(name = "--threshold-long-history-purge-strategy")
+    private long thresholdLongHistoryPurgeStrategy = 1000L;
+
+    @Option(name = "--restart-from-last-position")
+    private boolean restartFromLastPosition = false;
+
     @Override
     public Object execute() throws RepositoryException {
-        deleteVersions(reindexDefaultWorkspace, checkIntegrity, nbVersionsToKeep, maxExecutionTimeInMs, deleteOrphanedVersions);
+        final CleanerContext context = new CleanerContext()
+                .setReindexDefaultWorkspace(reindexDefaultWorkspace)
+                .setCheckIntegrity(checkIntegrity)
+                .setNbVersionsToKeep(nbVersionsToKeep)
+                .setMaxExecutionTimeInMs(maxExecutionTimeInMs)
+                .setDeleteOrphanedVersions(deleteOrphanedVersions)
+                .setSubtreePath(subtreePath)
+                .setPauseDuration(pauseDuration)
+                .setSkippedPaths(skippedPaths)
+                .setThresholdLongHistoryPurgeStrategy(thresholdLongHistoryPurgeStrategy)
+                .setRestartFromLastPosition(restartFromLastPosition);
+
+        execute(context);
         return null;
     }
 
-    public static void deleteVersions(Boolean reindexDefaultWorkspace, Boolean checkIntegrity, Long nbVersionsToKeep, Long maxExecutionTimeInMs, Boolean deleteOrphanedVersions) throws RepositoryException {
-        deleteVersions(reindexDefaultWorkspace, checkIntegrity, nbVersionsToKeep * 2, maxExecutionTimeInMs, deleteOrphanedVersions, new AtomicBoolean());
-    }
-
-    private static void deleteVersions(Boolean reindexDefaultWorkspace, Boolean checkIntegrity, Long nbVersionsToKeep, Long maxExecutionTimeInMs, Boolean deleteOrphanedVersions, AtomicBoolean interruptionHandler) throws RepositoryException {
-        if (SettingsBean.getInstance().isProcessingServer()) {
-
-            if (needsToInterrupt(interruptionHandler)) {
-                return;
-            }
-            if (reindexDefaultWorkspace.booleanValue()) {
-                try {
-                    final long start = System.currentTimeMillis();
-                    LOGGER.info("Starting reindexing of default workspace");
-                    ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
-                    final SchedulerService schedulerService = ServicesRegistry.getInstance().getSchedulerService();
-                    boolean continueChecking = true;
-                    while (continueChecking) {
-                        Thread.sleep(5000L);
-                        boolean reindexInProgress = false;
-                        final List<JobDetail> jobs = schedulerService.getAllRAMJobs();
-                        for (JobDetail job : jobs) {
-                            if (job.getName().startsWith("JahiaSearchIndex") && !"successful".equals(job.getJobDataMap().getString("status"))) {
-                                reindexInProgress = true;
-                                LOGGER.info("Reindexing is still in progress");
-                            }
-                        }
-                        continueChecking = continueChecking && reindexInProgress;
-                    }
-
-                    final long end = System.currentTimeMillis();
-                    if (LOGGER.isInfoEnabled()) {
-                        LOGGER.info(String.format("Finished reindexing default workspace in %s", DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
-                    }
-                } catch (SchedulerException ex) {
-                    LOGGER.error("Impossible to monitor reindexing job", ex);
-                } catch (InterruptedException ex) {
-                    LOGGER.error("Impossible to pause the thread", ex);
-                    Thread.currentThread().interrupt();
-                }
-            }
-
-            if (needsToInterrupt(interruptionHandler)) {
-                return;
-            }
-            final long start = System.currentTimeMillis();
-            long end;
-            if (nbVersionsToKeep >= 0) {
-                LOGGER.info("Starting to delete versions");
-                try ( Connection conn = DatabaseUtils.getDatasource().getConnection()) {
-                    final Long deletedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteVersions(session, VERSIONS_PATH, checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler, conn));
-                    end = System.currentTimeMillis();
-                    if (LOGGER.isInfoEnabled()) {
-                        LOGGER.info(String.format("Finished to delete %d versions in %s", deletedVersions, DurationFormatUtils.formatDuration(end - start, HUMAN_READABLE_FORMAT, true)));
-                    }
-                } catch (SQLException ex) {
-                    LOGGER.error("Impossible to retrieve DB connection", ex);
-                }
-            }
-
-            if (deleteOrphanedVersions.booleanValue()) {
-                if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info("Starting to delete orphaned versions");
-                }
-                final long orphanStart = System.currentTimeMillis();
-                final Long deletedOrphanedVersions = JCRTemplate.getInstance().doExecuteWithSystemSession((JCRSessionWrapper session) -> deleteOrphanedVersions(session, session.getNode(VERSIONS_PATH), start, maxExecutionTimeInMs, interruptionHandler));
-                end = System.currentTimeMillis();
-                if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info(String.format("Finished to delete %d orphaned versions in %s", deletedOrphanedVersions, DurationFormatUtils.formatDuration(end - orphanStart, HUMAN_READABLE_FORMAT, true)));
-                }
-            }
-        } else if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("This command can only be executed on the processing server");
-        }
-    }
-
-    private static Long deleteOrphanedVersions(JCRSessionWrapper session, JCRNodeWrapper startNode, long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler) {
-        long deletedVersions = 0L;
-        if (canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
-            try {
-                if (startNode.isNodeType(JcrConstants.NT_VERSIONHISTORY) && checkAndDeleteOrphanedVersionHistory(startNode, session)) {
-                    deletedVersions++;
-                    return deletedVersions;
-                }
-                if (startNode.hasNodes()) {
-                    final JCRNodeIteratorWrapper it = startNode.getNodes();
-                    while (it.hasNext() && canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
-                        JCRNodeWrapper node = (JCRNodeWrapper) it.next();
-                        deletedVersions = deletedVersions + deleteOrphanedVersions(session, node, start, maxExecutionTimeInMs, interruptionHandler);
-                    }
-                }
-            } catch (Exception ex) {
-                LOGGER.error(ex.getMessage(), ex);
-            }
-        }
-        return deletedVersions;
-    }
-
-    private static boolean checkAndDeleteOrphanedVersionHistory(JCRNodeWrapper versionHistory, JCRSessionWrapper session) throws RepositoryException {
-        JCRNodeIteratorWrapper it = versionHistory.getNodes();
-        while (it.hasNext()) {
-            JCRNodeWrapper node = (JCRNodeWrapper) it.next();
-            if (node.isNodeType(JcrConstants.NT_VERSION) && node.hasNode(JcrConstants.JCR_FROZENNODE)) {
-                JCRNodeWrapper frozen = node.getNode(JcrConstants.JCR_FROZENNODE);
-                if (frozen.hasProperty(JcrConstants.JCR_FROZENUUID)) {
+    public static void execute(CleanerContext context) throws RepositoryException {
+        try {
+            context.startProcess();
+            if (context.isRunAsynchronously()) {
+                Executors.newSingleThreadExecutor().execute(() -> {
                     try {
-                        session.getNodeByIdentifier(frozen.getPropertyAsString(JcrConstants.JCR_FROZENUUID));
+                        Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+                        deleteVersions(context);
+                    } catch (RepositoryException e) {
+                        logger.error("", e);
+                    }
+                });
+            } else {
+                deleteVersions(context);
+            }
+        } finally {
+            context.finalizeProcess();
+        }
+    }
+
+    private static void deleteVersions(CleanerContext context) throws RepositoryException {
+        if (!SettingsBean.getInstance().isProcessingServer()) {
+            logger.info("This command can only be executed on the processing server");
+            return;
+        }
+
+        if (needsToInterrupt(context)) {
+            return;
+        }
+
+        context.setEditSession(JCRSessionFactory.getInstance().getCurrentSystemSession(Constants.EDIT_WORKSPACE, null, null));
+        context.setLiveSession(JCRSessionFactory.getInstance().getCurrentSystemSession(Constants.LIVE_WORKSPACE, null, null));
+
+        if (context.isReindexDefaultWorkspace()) {
+            try {
+                final long start = System.currentTimeMillis();
+                logger.info("Starting reindexing of default workspace");
+                ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
+                final SchedulerService schedulerService = ServicesRegistry.getInstance().getSchedulerService();
+                boolean continueChecking = true;
+                while (continueChecking) {
+                    Thread.sleep(5000L);
+                    boolean reindexInProgress = false;
+                    final List<JobDetail> jobs = schedulerService.getAllRAMJobs();
+                    for (JobDetail job : jobs) {
+                        if (job.getName().startsWith("JahiaSearchIndex") && !"successful".equals(job.getJobDataMap().getString("status"))) {
+                            reindexInProgress = true;
+                            logger.info("Reindexing is still in progress");
+                        }
+                    }
+                    continueChecking = continueChecking && reindexInProgress;
+                }
+
+                if (logger.isInfoEnabled()) {
+                    logger.info(String.format("Finished reindexing default workspace in %s", toReadableDuration(start)));
+                }
+            } catch (SchedulerException ex) {
+                logger.error("Impossible to monitor reindexing job", ex);
+            } catch (InterruptedException ex) {
+                logger.error("Impossible to pause the thread", ex);
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        if (needsToInterrupt(context)) {
+            return;
+        }
+
+        if (context.scanVersionsTree()) {
+            context.setStartTime();
+            final JCRNodeWrapper node = getNode(context.getEditSession().getNode(VERSIONS_PATH), context.getSubtreePath());
+            logger.info("Starting to scan the versions under {}", node.getPath());
+            try (final Connection conn = DatabaseUtils.getDatasource().getConnection()) {
+                context.setDbConnection(conn);
+                processNode(node, context);
+                logger.info(String.format("Finished to scan the versions under %s in %s", node.getPath(), toReadableDuration(context.getStartTime())));
+                printDeletionSummary(context);
+                if (!needsToInterrupt(context)) context.endOfTreeReached();
+            } catch (SQLException e) {
+                logger.error("Failed to retrieve the DB connection", e);
+            }
+        }
+    }
+
+    private static void processNode(JCRNodeWrapper node, CleanerContext context) throws RepositoryException {
+        if (needsToInterrupt(context)) return;
+
+        if (CollectionUtils.isNotEmpty(context.getSkippedPaths())) {
+            final String path = node.getPath();
+            if (context.getSkippedPaths().contains(path)) {
+                logger.info("Skipping {}", path);
+                return;
+            }
+        }
+
+        if (node.isNodeType(Constants.NT_VERSIONHISTORY)) {
+            if (!context.canProcess(node)) return;
+            checkNodeIntegrity(context.getEditSession(), node, true, true, context);
+            if (isOrphanedHistory(node, context)) {
+                deleteOrphanedHistory((VersionHistory) node, context);
+            } else {
+                keepLastNVersions((VersionHistory) node, context);
+            }
+        } else {
+            final JCRNodeIteratorWrapper childNodes = node.getNodes();
+            while (childNodes.hasNext()) {
+                processNode((JCRNodeWrapper) childNodes.nextNode(), context);
+            }
+            context.getEditSession().refresh(false);
+            context.getLiveSession().refresh(false);
+        }
+    }
+
+    private static boolean isOrphanedHistory(JCRNodeWrapper versionHistory, CleanerContext context) throws RepositoryException {
+        final JCRNodeIteratorWrapper it = versionHistory.getNodes();
+        while (it.hasNext()) {
+            final JCRNodeWrapper node = (JCRNodeWrapper) it.next();
+            if (node.isNodeType(JcrConstants.NT_VERSION) && node.hasNode(JcrConstants.JCR_FROZENNODE)) {
+                final JCRNodeWrapper frozen = node.getNode(JcrConstants.JCR_FROZENNODE);
+                if (frozen.hasProperty(JcrConstants.JCR_FROZENUUID)) {
+                    final String uuid = frozen.getPropertyAsString(JcrConstants.JCR_FROZENUUID);
+                    try {
+                        context.getEditSession().getNodeByIdentifier(uuid);
                     } catch (ItemNotFoundException ex) {
-                        return deleteOrphaned((VersionHistory) versionHistory, session);
+                        try {
+                            context.getLiveSession().getNodeByIdentifier(uuid);
+                        } catch (ItemNotFoundException ex2) {
+                            return true;
+                        }
                     }
                     return false;
                 }
@@ -204,76 +253,180 @@ public class CleanCommand implements Action {
         return false;
     }
 
-    private static boolean deleteOrphaned(VersionHistory vh, JCRSessionWrapper session) throws RepositoryException {
+    private static void deleteOrphanedHistory(VersionHistory vh, CleanerContext context) throws RepositoryException {
+        final RangeIterator versionIterator = getVersionsIterator(vh, context);
+        long nbVersions = getVersionsCount(vh, versionIterator, context);
+        if (nbVersions > context.getThresholdLongHistoryPurgeStrategy()) {
+            logger.warn("{} has {} versions", vh.getPath(), nbVersions);
+            final List<String> versionNames = getVersionNames(versionIterator, context);
+            if (needsToInterrupt(context)) return;
+            final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
+            context.trackDeletedVersions(deletedVersions, true);
+            if (needsToInterrupt(context)) return;
+
+            final long remainingVersions = getVersionsCount(vh, getVersionsIterator(vh, context), context);
+            if (remainingVersions > context.getThresholdLongHistoryPurgeStrategy()) {
+                logger.debug(String.format("Finished processing %s , deleted %s versions, %s versions remaining", vh.getPath(), deletedVersions, remainingVersions));
+                return;
+            } else {
+                logger.debug("Finished processing {} , deleted {} versions, handling it from now on as any other orphaned version history", vh.getPath(), deletedVersions);
+                nbVersions = remainingVersions;
+            }
+        }
+
+        if (needsToInterrupt(context)) return;
+
         final NodeId id = NodeId.valueOf(vh.getIdentifier());
-        final SessionImpl providerSession = (SessionImpl) session.getProviderSession(session.getNode("/").getProvider());
+        final SessionImpl providerSession = (SessionImpl) context.getEditSession().getProviderSession(context.getEditSession().getNode("/").getProvider());
         final InternalVersionManager vm = providerSession.getInternalVersionManager();
-        final List<InternalVersionHistory> unusedVersions = new ArrayList<>();
-        unusedVersions.add(vm.getVersionHistory(id));
+        final List<InternalVersionHistory> unusedVersions = Collections.singletonList(vm.getVersionHistory(id));
         int[] results = {0, 0};
         if (vm instanceof InternalVersionManagerImpl) {
             results = ((InternalVersionManagerImpl) vm).purgeVersions(providerSession, unusedVersions);
         } else if (vm instanceof InternalXAVersionManager) {
             results = ((InternalXAVersionManager) vm).purgeVersions(providerSession, unusedVersions);
         }
-        return results[0] + results[1] > 0;
-    }
-
-    private static Long deleteVersions(JCRSessionWrapper session, String rootPath, Boolean checkIntegrity, Long nbVersionsToKeep, long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler, Connection conn) throws RepositoryException {
-        long deletedVersions = 0L;
-        if (canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
-            final JCRNodeWrapper rootNodeWrapper = session.getNode(rootPath, false);
-            final JCRNodeIteratorWrapper childNodeIterator = rootNodeWrapper.getNodes();
-            while (childNodeIterator.hasNext() && canContinue(start, maxExecutionTimeInMs, interruptionHandler)) {
-                final JCRNodeWrapper childNode = (JCRNodeWrapper) childNodeIterator.next();
-                long newDeletedVersions;
-                if (childNode.getNodeTypes().contains(JcrConstants.NT_VERSIONHISTORY)) {
-                    if (checkIntegrity.booleanValue()) {
-                        processNode(session, childNode, true, true, conn);
-                    }
-                    newDeletedVersions = keepLastNVersions((VersionHistory) childNode, nbVersionsToKeep, session, conn);
-                } else {
-                    newDeletedVersions = deleteVersions(session, childNode.getPath(), checkIntegrity, nbVersionsToKeep, start, maxExecutionTimeInMs, interruptionHandler, conn);
-                }
-                if (newDeletedVersions > 0L) {
-                    deletedVersions = deletedVersions + newDeletedVersions;
-                }
-            }
-            session.refresh(false);
+        if (results[0] + results[1] > 0) {
+            // Here we assume that either the whole version history is deleted, or nothing. TODO To be checked if a few versions can be deleted, and what would be the results values in such case
+            context.trackDeletedVersions(nbVersions, true);
+            context.trackDeletedVersionHistory(true);
         }
-        return deletedVersions;
     }
 
-    private static long keepLastNVersions(VersionHistory vh, Long nbVersionsToKeep, JCRSessionWrapper session, Connection conn) {
-        long deletedVersions = 0L;
+    private static List<String> getVersionNames(RangeIterator versionIterator, CleanerContext context) throws RepositoryException {
+        final List<String> versionNames = new ArrayList<>();
+        while (!needsToInterrupt(context) && versionIterator.hasNext()) {
+            final Node version = (Node) versionIterator.next();
+            if (!version.isNodeType(JcrConstants.NT_VERSION)) continue;
+            final String versionName = version.getName();
+            if (JcrConstants.JCR_ROOTVERSION.equals(versionName)) {
+                logger.debug("Skipping {} as it is the root version", toPrintableName(versionName));
+                continue;
+            }
+            versionNames.add(versionName);
+        }
+        return versionNames;
+    }
+
+    private static RangeIterator getVersionsIterator(VersionHistory vh, CleanerContext context) throws RepositoryException {
+        if (context.isUseVersioningApi()) {
+            if (vh instanceof JCRNodeWrapper) {
+                final VersionHistory realNode = (VersionHistory) ((JCRNodeWrapper) vh).getRealNode();
+                return realNode.getAllVersions();
+            } else {
+                return vh.getAllVersions();
+            }
+        } else {
+            return vh.getNodes();
+        }
+    }
+
+    private static long getVersionsCount(VersionHistory vh, RangeIterator versionIterator, CleanerContext context) throws RepositoryException {
+        return context.isUseVersioningApi() || !vh.hasNode("jcr:versionLabels") ? versionIterator.getSize() : versionIterator.getSize() - 1;
+    }
+
+    private static void keepLastNVersions(VersionHistory vh, CleanerContext context) {
+        if (context.getNbVersionsToKeep() < 0) return;
 
         try {
-            final VersionIterator versionIterator = vh.getAllVersions();
-            final Long nbVersions = versionIterator.getSize();
-            if (nbVersions > nbVersionsToKeep) {
-                final List<String> unusedVersionsName = new ArrayList<>();
-                final long maxPosition = nbVersions - nbVersionsToKeep;
-                while (versionIterator.hasNext() && versionIterator.getPosition() < maxPosition) {
-                    final Version version = versionIterator.nextVersion();
-                    processNode(session, version, true, true, conn);
-                    final String versionName = version.getName();
-                    if (version.getReferences().getSize() == 0 && !JcrConstants.JCR_ROOTVERSION.equals(versionName)) {
-                        unusedVersionsName.add(versionName);
-                    }
+            final RangeIterator versionIterator = getVersionsIterator(vh, context);
+            final long nbVersions = getVersionsCount(vh, versionIterator, context);
+            // Do clean if we have more versions than the desired number + 1 for the root version
+            if (nbVersions > context.getNbVersionsToKeep() + 1) {
+                final List<String> versionNames = getVersionNames(versionIterator, context);
+                final int nbNames = versionNames.size();
+                for (int i = nbNames - 1; i > nbVersions - 1 - context.getNbVersionsToKeep(); i--) {
+                    versionNames.remove(i);
                 }
-                for (String unusedVersionName : unusedVersionsName) {
-                    vh.removeVersion(unusedVersionName);
-                    deletedVersions++;
-                }
+                final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
+                context.trackDeletedVersions(deletedVersions, false);
             }
         } catch (Exception ex) {
-            LOGGER.info("Exception when trying to remove a version", ex);
+            logger.info("Exception when trying to clean a version history", ex);
         }
+    }
+
+    private static long deleteVersionNodes(VersionHistory vh, List<String> names, CleanerContext context) {
+        long deletedVersions = 0L;
+        final List<String> versionNames = new ArrayList<>(names);
+        int nbVersionPurgedInCurrentLoop;
+        int nbLoops = 0;
+        final List<String> skippedVersionNames = new ArrayList<>();
+        do {
+            nbLoops++;
+            nbVersionPurgedInCurrentLoop = 0;
+
+            for (String versionName : versionNames) {
+                final StopWatch stopWatch = new StopWatch();
+                stopWatch.start("Load the version");
+                final Version version;
+                try {
+                    version = vh.getVersion(versionName);
+                } catch (RepositoryException e) {
+                    logger.error("Failed to remove " + versionName, e);
+                    skippedVersionNames.add(versionName);
+                    continue;
+                }
+                stopWatch.stop();
+                stopWatch.start("Calculate the number of references");
+                final long nbReferences;
+                try {
+                    nbReferences = version.getReferences().getSize();
+                } catch (RepositoryException e) {
+                    logger.error("Failed to remove " + versionName, e);
+                    skippedVersionNames.add(versionName);
+                    continue;
+                }
+                stopWatch.stop();
+                if (nbReferences > 0) {
+                    logger.debug("Skipping {} as it is referenced", toPrintableName(versionName));
+                    skippedVersionNames.add(versionName);
+                } else {
+                    stopWatch.start("Version remove");
+                    try {
+                        vh.removeVersion(versionName);
+                        nbVersionPurgedInCurrentLoop++;
+                        deletedVersions++;
+                        logger.debug(String.format("Removed a version (deleted %s versions, deleted=%s / skipped=%s in loop %s): %s", deletedVersions, nbVersionPurgedInCurrentLoop, skippedVersionNames.size(), nbLoops, toPrintableName(versionName)));
+                    } catch (RepositoryException | RuntimeException e) {
+                        logger.error("Failed to remove " + versionName, e);
+                        skippedVersionNames.add(versionName);
+                    }
+                    stopWatch.stop();
+                }
+                final long sleepDuration = getSleepDuration(context);
+                if (sleepDuration > 0) {
+                    stopWatch.start("Pause");
+                    try {
+                        Thread.sleep(sleepDuration);
+                    } catch (InterruptedException e) {
+                        logger.error("", e);
+                    }
+                    stopWatch.stop();
+                }
+                if (logger.isDebugEnabled()) logger.debug(stopWatch.prettyPrint());
+                if (needsToInterrupt(context)) break;
+            }
+            versionNames.clear();
+            versionNames.addAll(skippedVersionNames);
+            skippedVersionNames.clear();
+        } while (!needsToInterrupt(context) && nbVersionPurgedInCurrentLoop > 0 && !versionNames.isEmpty());
+
         return deletedVersions;
     }
 
-    private static void processNode(Session session, Node node,
-            boolean fix, boolean referencesCheck, Connection conn) throws RepositoryException {
+    private static long getSleepDuration(CleanerContext context) {
+        try {
+            return Long.parseLong(System.getProperty("version-cleaner.pause.duration"));
+        } catch (NumberFormatException ignored) {
+            return context.getPauseDuration();
+        }
+    }
+
+    private static void checkNodeIntegrity(Session session, Node node,
+                                           boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
+        if (!context.isCheckIntegrity()) return;
+
         try {
             if (fix || referencesCheck) {
                 PropertyIterator propertyIterator = node.getProperties();
@@ -283,16 +436,16 @@ public class CleanCommand implements Action {
                         try {
                             Value[] values = property.getValues();
                             for (Value value : values) {
-                                if (!processPropertyValue(session, node, property, value, fix, referencesCheck, conn)) {
+                                if (!processPropertyValue(session, node, property, value, fix, referencesCheck, context)) {
                                     return;
                                 }
                             }
                         } catch (ConstraintViolationException ex) {
                             //Definition was changed, property is missing
-                            LOGGER.warn(String.format("Warning: Property definition for node %s is missing", node.getPath()), ex);
+                            logger.warn(String.format("Warning: Property definition for node %s is missing", node.getPath()), ex);
                         }
                     } else {
-                        if (!processPropertyValue(session, node, property, property.getValue(), fix, referencesCheck, conn)) {
+                        if (!processPropertyValue(session, node, property, property.getValue(), fix, referencesCheck, context)) {
                             return;
                         }
                     }
@@ -300,12 +453,12 @@ public class CleanCommand implements Action {
             }
 
         } catch (RepositoryException ex) {
-            LOGGER.warn(String.format("Exception while processing node %s", node.getPath()), ex);
+            logger.warn(String.format("Exception while processing node %s", node.getPath()), ex);
         }
     }
 
     private static boolean processPropertyValue(Session session, Node node, Property property, Value propertyValue,
-            boolean fix, boolean referencesCheck, Connection conn) throws RepositoryException {
+            boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
         int propertyType = propertyValue.getType();
         switch (propertyType) {
             case PropertyType.REFERENCE:
@@ -320,13 +473,13 @@ public class CleanCommand implements Action {
                     PreparedStatement statement = null;
                     ResultSet resultSet = null;
                     try {
-                        statement = conn.prepareStatement("select * from jahia_external_mapping where internalUuid=?");
+                        statement = context.getDbConnection().prepareStatement("select * from jahia_external_mapping where internalUuid=?");
                         statement.setString(1, uuid);
                         resultSet = statement.executeQuery();
                         if (resultSet.next()) {
-                            LOGGER.info(String.format("Mapping found towards %s, this reference is not available at this time (referenced from property %s), please check your mount points and/or external providers", resultSet.getString("externalId"), property.getPath()));
+                            logger.info(String.format("Mapping found towards %s, this reference is not available at this time (referenced from property %s), please check your mount points and/or external providers", resultSet.getString("externalId"), property.getPath()));
                             if (fix) {
-                                LOGGER.info("It will not be fixed automatically");
+                                logger.info("It will not be fixed automatically");
                             }
                             break;
                         }
@@ -336,7 +489,7 @@ public class CleanCommand implements Action {
                         DatabaseUtils.closeQuietly(resultSet);
                         DatabaseUtils.closeQuietly(statement);
                     }
-                    LOGGER.info(String.format("Couldn't find referenced node with UUID %s referenced from property %s", uuid, property.getPath()));
+                    logger.info(String.format("Couldn't find referenced node with UUID %s referenced from property %s", uuid, property.getPath()));
                     if (fix) {
                         if (mustRemoveParentNode(node)) {
                             fixInvalidNodeReference(node);
@@ -353,7 +506,7 @@ public class CleanCommand implements Action {
     }
 
     private static void fixInvalidPropertyReference(Node node, Property property, String uuid) throws RepositoryException {
-        LOGGER.info(String.format("Fixing invalid reference by setting reference property %s to null...", property.getPath()));
+        logger.info(String.format("Fixing invalid reference by setting reference property %s to null...", property.getPath()));
         Calendar originalLastModificationDate;
         try {
             originalLastModificationDate = node.getProperty(Constants.JCR_LASTMODIFIED).getDate();
@@ -393,7 +546,7 @@ public class CleanCommand implements Action {
     }
 
     private static void fixInvalidNodeReference(Node node) throws RepositoryException {
-        LOGGER.info(String.format("Fixing invalid reference by removing node %s from repository...", node.getPath()));
+        logger.info(String.format("Fixing invalid reference by removing node %s from repository...", node.getPath()));
         Node parentNode = node.getParent();
         Calendar originalLastModificationDate;
         try {
@@ -434,19 +587,49 @@ public class CleanCommand implements Action {
         return false;
     }
 
-    private static boolean canContinue(long start, Long maxExecutionTimeInMs, AtomicBoolean interruptionHandler) {
-        if (needsToInterrupt(interruptionHandler)) {
-            return false;
+    private static boolean needsToInterrupt(CleanerContext context) {
+        if (Boolean.getBoolean(INTERRUPT_MARKER)) {
+            logger.info("Interrupting the process");
+            System.clearProperty(INTERRUPT_MARKER);
+            context.getInterruptionHandler().set(Boolean.TRUE);
+            return context.getInterruptionHandler().get();
         }
-        return maxExecutionTimeInMs == 0 || System.currentTimeMillis() < start + maxExecutionTimeInMs;
+        if (context.getMaxExecutionTimeInMs() <= 0) return Boolean.FALSE;
+        if (context.getStartTime() < 0) return Boolean.FALSE;
+        return System.currentTimeMillis() >= context.getStartTime() + context.getMaxExecutionTimeInMs();
     }
 
-    private static boolean needsToInterrupt(AtomicBoolean interruptionHandler) {
-        if (Boolean.getBoolean(INTERRUPT_MARKER)) {
-            LOGGER.info("Interrupting the process");
-            System.clearProperty(INTERRUPT_MARKER);
-            interruptionHandler.set(true);
+    private static JCRNodeWrapper getNode(JCRNodeWrapper parent, String relativePath) throws RepositoryException {
+        if (StringUtils.isBlank(relativePath) || "/".equals(relativePath)) {
+            return parent;
         }
-        return interruptionHandler.get();
+        return parent.getNode(relativePath);
+    }
+
+    private static String toPrintableName(String versionName) {
+        return toPrintableName(versionName, 2000);
+    }
+
+    private static String toPrintableName(String versionName, int maxLength) {
+        if (versionName == null || versionName.length() <= maxLength) return versionName;
+        return String.format("%s ... [full length = %d]", versionName.substring(0, maxLength), versionName.length());
+    }
+
+    private static void printDeletionSummary(CleanerContext context) {
+        if (context.isDeleteOrphanedVersions() && context.deleteNonOrphanVersions()) {
+            logger.info(String.format("Deleted: [valid version histories=%s / valid versions=%s] [orphan version histories=%s / orphan versions=%s]",
+                    context.getDeletedVersionHistoriesCount(), context.getDeletedVersionsCount(),
+                    context.getDeletedOrphanVersionHistoriesCount(), context.getDeletedOrphanVersionsCount()));
+        } else if (context.deleteNonOrphanVersions()) {
+            logger.info(String.format("Deleted: [valid version histories=%s / valid versions=%s]",
+                    context.getDeletedVersionHistoriesCount(), context.getDeletedVersionsCount()));
+        } else if (context.isDeleteOrphanedVersions()) {
+            logger.info(String.format("Deleted: [orphan version histories=%s / orphan versions=%s]",
+                    context.getDeletedOrphanVersionHistoriesCount(), context.getDeletedOrphanVersionsCount()));
+        }
+    }
+
+    private static String toReadableDuration(long start){
+        return DurationFormatUtils.formatDuration(System.currentTimeMillis() - start, HUMAN_READABLE_FORMAT, true);
     }
 }

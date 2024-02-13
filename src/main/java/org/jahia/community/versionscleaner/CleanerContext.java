@@ -84,7 +84,9 @@ public class CleanerContext {
     private String loadLastScanPosition() {
         final File outputDir = new File(System.getProperty("java.io.tmpdir"), "versions-cleaner");
         try {
-            final List<String> lines = FileUtils.readLines(new File(outputDir, "lastPosition.txt"), StandardCharsets.UTF_8);
+            final File file = new File(outputDir, "lastPosition.txt");
+            if (!file.exists()) return null;
+            final List<String> lines = FileUtils.readLines(file, StandardCharsets.UTF_8);
             if (CollectionUtils.isNotEmpty(lines)) return lines.get(0);
         } catch (IOException e) {
             logger.error("", e);

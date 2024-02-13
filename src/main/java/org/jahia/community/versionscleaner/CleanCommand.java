@@ -89,8 +89,8 @@ public class CleanCommand implements Action {
     @Option(name = "-pause", description = "Duration of the pause between 2 version deletions. No pause if less or equal to zero")
     private Long pauseDuration = 0L;
 
-    @Option(name = "-skip", description = "--skip-subtree", multiValued = true)
-    private List<String> skippedPaths;
+    @Option(name = "-skip", aliases = "--skip-subtree", multiValued = true)
+    private List<String> skippedPaths = null;
 
     @Option(name = "--threshold-long-history-purge-strategy")
     private long thresholdLongHistoryPurgeStrategy = 1000L;

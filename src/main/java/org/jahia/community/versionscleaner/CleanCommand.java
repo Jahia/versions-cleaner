@@ -219,13 +219,12 @@ public class CleanCommand implements Action {
             } else {
                 keepLastNVersions((VersionHistory) node, context);
             }
+            context.refreshSessions();
         } else {
             final JCRNodeIteratorWrapper childNodes = node.getNodes();
             while (childNodes.hasNext()) {
                 processNode((JCRNodeWrapper) childNodes.nextNode(), context);
             }
-            context.getEditSession().refresh(false);
-            context.getLiveSession().refresh(false);
         }
     }
 

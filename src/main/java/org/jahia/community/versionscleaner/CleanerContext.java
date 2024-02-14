@@ -35,11 +35,7 @@ public class CleanerContext {
     private boolean runAsynchronously = Boolean.TRUE;
     private long thresholdLongHistoryPurgeStrategy = 1000;
     private boolean useVersioningApi = Boolean.FALSE;
-    private long startTime;
-    private long deletedVersionsCount;
-    private long deletedVersionHistoriesCount;
-    private long deletedOrphanVersionsCount;
-    private long deletedOrphanVersionHistoriesCount;
+    private long sessionRefreshInterval = 100L;
 
     private Connection dbConnection;
     private JCRSessionWrapper editSession;
@@ -47,6 +43,12 @@ public class CleanerContext {
     private String currentPosition;
     private boolean searchPosition;
     private String lastScanPosition;
+    private long startTime;
+    private long deletedVersionsCount;
+    private long deletedVersionHistoriesCount;
+    private long deletedOrphanVersionsCount;
+    private long deletedOrphanVersionHistoriesCount;
+    private long processedVersionHistoriesCount;
 
     public CleanerContext() {
         interruptionHandler = new AtomicBoolean();
@@ -62,6 +64,7 @@ public class CleanerContext {
         currentPosition = null;
         lastScanPosition = loadLastScanPosition();
         searchPosition = restartFromLastPosition && lastScanPosition != null;
+        processedVersionHistoriesCount = 0L;
     }
 
     public void finalizeProcess() {
@@ -73,6 +76,7 @@ public class CleanerContext {
     }
 
     public boolean canProcess(JCRNodeWrapper vh) throws RepositoryException {
+        processedVersionHistoriesCount++;
         currentPosition = vh.getParent().getPath();
         if (searchPosition) {
             searchPosition = !StringUtils.equals(currentPosition, lastScanPosition);
@@ -148,6 +152,16 @@ public class CleanerContext {
     public long getDeletedOrphanVersionHistoriesCount() {
         return deletedOrphanVersionHistoriesCount;
     }
+
+    public void refreshSessions() throws RepositoryException {
+        if (processedVersionHistoriesCount % sessionRefreshInterval != 0) return;
+        editSession.refresh(false);
+        liveSession.refresh(false);
+    }
+
+    /*
+    Getters & setters
+     */
 
     public boolean isReindexDefaultWorkspace() {
         return reindexDefaultWorkspace;
@@ -254,6 +268,11 @@ public class CleanerContext {
 
     public CleanerContext setUseVersioningApi(boolean useVersioningApi) {
         this.useVersioningApi = useVersioningApi;
+        return this;
+    }
+
+    public CleanerContext setSessionRefreshInterval(long sessionRefreshInterval) {
+        this.sessionRefreshInterval = sessionRefreshInterval;
         return this;
     }
 

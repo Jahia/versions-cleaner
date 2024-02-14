@@ -224,6 +224,7 @@ public class CleanCommand implements Action {
             final JCRNodeIteratorWrapper childNodes = node.getNodes();
             while (childNodes.hasNext()) {
                 processNode((JCRNodeWrapper) childNodes.nextNode(), context);
+                if (needsToInterrupt(context)) return;
             }
         }
     }

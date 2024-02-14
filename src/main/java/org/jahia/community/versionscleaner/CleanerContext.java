@@ -64,6 +64,8 @@ public class CleanerContext {
         currentPosition = null;
         lastScanPosition = loadLastScanPosition();
         searchPosition = restartFromLastPosition && lastScanPosition != null;
+        if (searchPosition) logger.debug("Will restart from {}", lastScanPosition);
+        else  logger.debug("Restarting from the beginning");
         processedVersionHistoriesCount = 0L;
 
         if (logger.isDebugEnabled()) logger.debug("Configurations: {}", printConfigurations());
@@ -101,7 +103,7 @@ public class CleanerContext {
         if (searchPosition) {
             searchPosition = !StringUtils.equals(currentPosition, lastScanPosition);
             if (!searchPosition) logger.info("Restarting from {}", currentPosition);
-            return searchPosition;
+            return !searchPosition;
         }
         return Boolean.TRUE;
     }
@@ -128,8 +130,10 @@ public class CleanerContext {
                 final File file = new File(outputDir, "lastPosition.txt");
                 if (currentPosition == null) {
                     FileUtils.deleteQuietly(file);
+                    logger.debug("Saving the last position: no position to save");
                 } else {
                     FileUtils.writeLines(file, StandardCharsets.UTF_8.name(), Collections.singleton(currentPosition));
+                    logger.debug("Saving the last position: {}", currentPosition);
                 }
             } catch (IOException e) {
                 logger.error("", e);

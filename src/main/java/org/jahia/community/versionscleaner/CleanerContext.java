@@ -81,8 +81,9 @@ public class CleanerContext {
         if (searchPosition) {
             searchPosition = !StringUtils.equals(currentPosition, lastScanPosition);
             if (!searchPosition) logger.info("Restarting from {}", currentPosition);
+            return searchPosition;
         }
-        return searchPosition;
+        return Boolean.TRUE;
     }
 
     private String loadLastScanPosition() {

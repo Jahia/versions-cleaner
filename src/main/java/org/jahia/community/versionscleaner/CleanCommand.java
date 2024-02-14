@@ -118,22 +118,25 @@ public class CleanCommand implements Action {
     }
 
     public static void execute(CleanerContext context) throws RepositoryException {
-        try {
-            context.startProcess();
-            if (context.isRunAsynchronously()) {
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    try {
-                        Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
-                        deleteVersions(context);
-                    } catch (RepositoryException e) {
-                        logger.error("", e);
-                    }
-                });
-            } else {
+        if (context.isRunAsynchronously()) {
+            Executors.newSingleThreadExecutor().execute(() -> {
+                try {
+                    Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+                    context.startProcess();
+                    deleteVersions(context);
+                } catch (RepositoryException e) {
+                    logger.error("", e);
+                } finally {
+                    context.finalizeProcess();
+                }
+            });
+        } else {
+            try {
+                context.startProcess();
                 deleteVersions(context);
+            } finally {
+                context.finalizeProcess();
             }
-        } finally {
-            context.finalizeProcess();
         }
     }
 

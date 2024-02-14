@@ -120,6 +120,7 @@ public class CleanerContext {
     }
 
     private void saveLastPosition() {
+        logger.debug("Saving the last position");
         final File outputDir = new File(System.getProperty("java.io.tmpdir"), "versions-cleaner");
         final boolean folderCreated = outputDir.exists() || outputDir.mkdirs();
         if (folderCreated && outputDir.canWrite()) {

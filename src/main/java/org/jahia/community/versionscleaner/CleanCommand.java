@@ -257,19 +257,20 @@ public class CleanCommand implements Action {
         final RangeIterator versionIterator = getVersionsIterator(vh, context);
         long nbVersions = getVersionsCount(vh, versionIterator, context);
         if (nbVersions > context.getThresholdLongHistoryPurgeStrategy()) {
-            logger.warn("{} has {} versions", vh.getPath(), nbVersions);
+            final String vhPath = vh.getPath();
+            logger.warn("{} has {} versions", vhPath, nbVersions);
             final List<String> versionNames = getVersionNames(versionIterator, context);
             if (needsToInterrupt(context)) return;
             final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
             context.trackDeletedVersions(deletedVersions, true);
             if (needsToInterrupt(context)) return;
 
-            final long remainingVersions = getVersionsCount(vh, getVersionsIterator(vh, context), context);
+            final long remainingVersions = nbVersions - deletedVersions;
             if (remainingVersions > context.getThresholdLongHistoryPurgeStrategy()) {
-                logger.debug(String.format("Finished processing %s , deleted %s versions, %s versions remaining", vh.getPath(), deletedVersions, remainingVersions));
+                logger.debug(String.format("Finished processing %s , deleted %s versions, %s versions remaining", vhPath, deletedVersions, remainingVersions));
                 return;
             } else {
-                logger.debug("Finished processing {} , deleted {} versions, handling it from now on as any other orphaned version history", vh.getPath(), deletedVersions);
+                logger.debug("Finished processing {} , deleted {} versions, handling it from now on as any other orphaned version history", vhPath, deletedVersions);
                 nbVersions = remainingVersions;
             }
         }

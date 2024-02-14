@@ -611,8 +611,9 @@ public class CleanCommand implements Action {
             logger.info("Interrupting the process");
             System.clearProperty(INTERRUPT_MARKER);
             context.getInterruptionHandler().set(Boolean.TRUE);
-            return context.getInterruptionHandler().get();
+            return Boolean.TRUE;
         }
+        if (context.getInterruptionHandler().get()) return Boolean.TRUE;
         if (context.getMaxExecutionTimeInMs() <= 0) return Boolean.FALSE;
         if (context.getStartTime() < 0) return Boolean.FALSE;
         return System.currentTimeMillis() >= context.getStartTime() + context.getMaxExecutionTimeInMs();

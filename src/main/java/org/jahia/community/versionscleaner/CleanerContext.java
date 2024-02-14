@@ -101,7 +101,7 @@ public class CleanerContext {
             try {
                 final File file = new File(outputDir, "lastPosition.txt");
                 if (currentPosition == null) {
-                    file.delete();
+                    FileUtils.deleteQuietly(file);
                 } else {
                     FileUtils.writeLines(file, StandardCharsets.UTF_8.name(), Collections.singleton(currentPosition));
                 }

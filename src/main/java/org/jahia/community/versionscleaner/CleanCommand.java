@@ -255,6 +255,8 @@ public class CleanCommand implements Action {
     }
 
     private static void deleteOrphanedHistory(VersionHistory vh, CleanerContext context) throws RepositoryException {
+        if (!context.isDeleteOrphanedVersions()) return;
+
         final RangeIterator versionIterator = getVersionsIterator(vh, context);
         long nbVersions = getVersionsCount(vh, versionIterator, context);
         if (nbVersions > context.getThresholdLongHistoryPurgeStrategy()) {

@@ -296,6 +296,10 @@ public class CleanCommand implements Action {
     }
 
     private static List<String> getVersionNames(RangeIterator versionIterator, CleanerContext context) throws RepositoryException {
+        if (versionIterator.getPosition() != 0) {
+            throw new IllegalArgumentException("The provided iterator has already been iterated");
+        }
+
         final List<String> versionNames = new ArrayList<>();
         while (!needsToInterrupt(context) && versionIterator.hasNext()) {
             final Node version = (Node) versionIterator.next();

@@ -67,6 +67,7 @@ public class CleanCommand implements Action {
         "jnt:reference"
     };
     private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
+    private static final String PAUSE_DURATION_MARKER = "versions-cleaner.pause.duration";
 
     @Option(name = "-r", aliases = "--reindex-default-workspace", description = "Reindex default workspace before cleaning")
     private Boolean reindexDefaultWorkspace = Boolean.FALSE;
@@ -418,7 +419,7 @@ public class CleanCommand implements Action {
 
     private static long getSleepDuration(CleanerContext context) {
         try {
-            return Long.parseLong(System.getProperty("version-cleaner.pause.duration"));
+            return Long.parseLong(System.getProperty(PAUSE_DURATION_MARKER));
         } catch (NumberFormatException ignored) {
             return context.getPauseDuration();
         }

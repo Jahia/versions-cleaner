@@ -65,6 +65,8 @@ public class CleanerContext {
         lastScanPosition = loadLastScanPosition();
         searchPosition = restartFromLastPosition && lastScanPosition != null;
         processedVersionHistoriesCount = 0L;
+
+        if (logger.isDebugEnabled()) logger.debug("Configurations: {}", printConfigurations());
     }
 
     public void finalizeProcess() {
@@ -73,6 +75,24 @@ public class CleanerContext {
         liveSession = null;
         JcrSessionFilter.endRequest();
         saveLastPosition();
+    }
+
+    public String printConfigurations() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("reindexDefaultWorkspace: ").append(reindexDefaultWorkspace).append(", ");
+        sb.append("checkIntegrity: ").append(checkIntegrity).append(", ");
+        sb.append("nbVersionsToKeep: ").append(nbVersionsToKeep).append(", ");
+        sb.append("maxExecutionTimeInMs: ").append(maxExecutionTimeInMs).append(", ");
+        sb.append("deleteOrphanedVersions: ").append(deleteOrphanedVersions).append(", ");
+        sb.append("subtreePath: ").append(subtreePath).append(", ");
+        sb.append("pauseDuration: ").append(pauseDuration).append(", ");
+        sb.append("skippedPaths: ").append(skippedPaths).append(", ");
+        sb.append("restartFromLastPosition: ").append(restartFromLastPosition).append(", ");
+        sb.append("runAsynchronously: ").append(runAsynchronously).append(", ");
+        sb.append("thresholdLongHistoryPurgeStrategy: ").append(thresholdLongHistoryPurgeStrategy).append(", ");
+        sb.append("useVersioningApi: ").append(useVersioningApi).append(", ");
+        sb.append("sessionRefreshInterval: ").append(sessionRefreshInterval);
+        return sb.toString();
     }
 
     public boolean canProcess(JCRNodeWrapper vh) throws RepositoryException {

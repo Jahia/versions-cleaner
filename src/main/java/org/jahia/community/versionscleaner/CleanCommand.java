@@ -204,8 +204,8 @@ public class CleanCommand implements Action {
     private static void processNode(JCRNodeWrapper node, CleanerContext context) throws RepositoryException {
         if (needsToInterrupt(context)) return;
 
+        final String path = node.getPath();
         if (CollectionUtils.isNotEmpty(context.getSkippedPaths())) {
-            final String path = node.getPath();
             if (context.getSkippedPaths().contains(path)) {
                 logger.info("Skipping {}", path);
                 return;
@@ -213,6 +213,7 @@ public class CleanCommand implements Action {
         }
 
         if (node.isNodeType(Constants.NT_VERSIONHISTORY)) {
+            logger.debug("Processing {}", path);
             if (!context.canProcess(node)) return;
             checkNodeIntegrity(context.getEditSession(), node, true, true, context);
             if (isOrphanedHistory(node, context)) {
@@ -257,6 +258,7 @@ public class CleanCommand implements Action {
     private static void deleteOrphanedHistory(VersionHistory vh, CleanerContext context) throws RepositoryException {
         if (!context.isDeleteOrphanedVersions()) return;
 
+        logger.debug("Orphan version history to delete: {}", vh.getPath());
         final RangeIterator versionIterator = getVersionsIterator(vh, context);
         long nbVersions = getVersionsCount(vh, versionIterator, context);
         if (nbVersions > context.getThresholdLongHistoryPurgeStrategy()) {
@@ -336,9 +338,18 @@ public class CleanCommand implements Action {
     private static void keepLastNVersions(VersionHistory vh, CleanerContext context) {
         if (context.getNbVersionsToKeep() < 0) return;
 
+        String path;
+        try {
+            path = vh.getPath();
+        } catch (RepositoryException e) {
+            logger.error("", e);
+            path = "<failed to calculate the path>";
+        }
+        logger.debug("Non orphan version history to reduce: {}", path);
         try {
             final RangeIterator versionIterator = getVersionsIterator(vh, context);
             final long nbVersions = getVersionsCount(vh, versionIterator, context);
+            logger.debug("{} has {} versions", path, nbVersions);
             // Do clean if we have more versions than the desired number + 1 for the root version
             if (nbVersions > context.getNbVersionsToKeep() + 1) {
                 final List<String> versionNames = getVersionNames(versionIterator, context);

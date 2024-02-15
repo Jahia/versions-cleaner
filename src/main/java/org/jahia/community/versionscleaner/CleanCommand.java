@@ -84,16 +84,16 @@ public class CleanCommand implements Action {
     @Option(name = "-o", aliases = "--delete-orphaned-versions", description = "Delete orphaned versions")
     private Boolean deleteOrphanedVersions = Boolean.FALSE;
 
-    @Option(name = "-p", aliases = "--subtree-path", description = "Subtree of versions tree where the purge has to be run. Must start with a /")
+    @Option(name = "-p", aliases = "--subtree-path", description = "Subtree of versions tree where the purge has to be run")
     private String subtreePath = null;
 
-    @Option(name = "-pause", description = "Duration of the pause between 2 version deletions. No pause if less or equal to zero")
+    @Option(name = "-pause", description = "Duration of the pause between 2 version deletions. No pause if less or equal to zero. Zero by default")
     private Long pauseDuration = 0L;
 
-    @Option(name = "-skip", aliases = "--skip-subtree", multiValued = true)
+    @Option(name = "-skip", aliases = "--skip-subtree", multiValued = true, description = "Path to be skipped by the process. Useful for example if you have identified some version histories which are particularly massive, and you want to iterate over the rest first. Several paths can be defined")
     private List<String> skippedPaths = null;
 
-    @Option(name = "--threshold-long-history-purge-strategy")
+    @Option(name = "--threshold-long-history-purge-strategy", description = "Number of versions over which orphaned histories are purged by deleting the versions one by one, to reduce the memory footprint. 1000 by default")
     private long thresholdLongHistoryPurgeStrategy = 1000L;
 
     @Option(name = "--force-restart-from-the-beginning", description = "If specified, the process will restart from the beginning of the tree. Otherwise, it will try to restart from where the previous execution had stopped")

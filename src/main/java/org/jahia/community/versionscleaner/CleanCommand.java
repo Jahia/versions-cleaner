@@ -96,8 +96,8 @@ public class CleanCommand implements Action {
     @Option(name = "--threshold-long-history-purge-strategy")
     private long thresholdLongHistoryPurgeStrategy = 1000L;
 
-    @Option(name = "--restart-from-last-position")
-    private boolean restartFromLastPosition = false;
+    @Option(name = "--force-restart-from-the-beginning", description = "If specified, the process will restart from the beginning of the tree. Otherwise, it will try to restart from where the previous execution had stopped")
+    private boolean forceRestartFromBeginning = false;
 
     @Override
     public Object execute() throws RepositoryException {
@@ -111,7 +111,7 @@ public class CleanCommand implements Action {
                 .setPauseDuration(pauseDuration)
                 .setSkippedPaths(skippedPaths)
                 .setThresholdLongHistoryPurgeStrategy(thresholdLongHistoryPurgeStrategy)
-                .setRestartFromLastPosition(restartFromLastPosition);
+                .setRestartFromLastPosition(!forceRestartFromBeginning);
 
         execute(context);
         return null;

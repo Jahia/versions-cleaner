@@ -626,7 +626,7 @@ public class CleanCommand implements Action {
         if (StringUtils.isBlank(relativePath) || "/".equals(relativePath)) {
             return parent;
         }
-        return parent.getNode(relativePath);
+        return parent.getNode(relativePath.startsWith("/") ? relativePath.substring(1) : relativePath);
     }
 
     private static String toPrintableName(String versionName) {

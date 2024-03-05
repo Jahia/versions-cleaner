@@ -15,7 +15,7 @@ public class CleanBackgroundJob extends BackgroundJob {
                 .setReindexDefaultWorkspace(jobDataMap.getBoolean("reindexDefaultWorkspace"))
                 .setCheckIntegrity(jobDataMap.getBoolean("checkIntegrity"))
                 .setNbVersionsToKeep(jobDataMap.getLong("nbVersionsToKeep"))
-                .setMaxExecutionTimeInMs( jobDataMap.getLong("maxExecutionTimeInMs"))
+                .setMaxExecutionTimeInMs(jobDataMap.getLong("maxExecutionTimeInMs"))
                 .setDeleteOrphanedVersions(jobDataMap.getBoolean("deleteOrphanedVersions"));
         CleanCommand.execute(configuration);
     }

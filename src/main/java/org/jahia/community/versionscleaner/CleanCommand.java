@@ -54,7 +54,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-@Command(scope = "versions-cleaner", name = "keep-n", description = "Delete all version except the last N versions")
+@Command(scope = "versions-cleaner", name = "run", description = "Run a scan the versions tree, and perform the configured actions")
 @Service
 public class CleanCommand implements Action {
 

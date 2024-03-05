@@ -6,7 +6,7 @@ Jahia module to clean versions by:
 - removing the orphaned versions
 
 * [How to use it](#how-to-use)
-    * [cleaners-version:keep-n](#versions-cleanerkeep-n)
+    * [versions-cleaner:run](#versions-cleanerrun)
     * [How to interrupt an execution?](#how-to-interrupt-an-execution)
 
 ## How to use?
@@ -29,9 +29,9 @@ You can run some purge on demand, using a [Karaf command](#commands) or configur
 
 ### Commands
 
-#### versions-cleaner:keep-n
+#### versions-cleaner:run
 
-Scan the versions tree, and performed the configured actions.
+Run a scan the versions tree, and perform the configured actions
 
 **Options:**
 
@@ -52,19 +52,19 @@ Scan the versions tree, and performed the configured actions.
 
 Reduce all the non-orphan histories, keeping maximum 2 versions per history:                                
 
-    versions-cleaner:keep-n -n 2
+    versions-cleaner:run -n 2
 
 Delete all the orphan histories:
 
-    versions-cleaner:keep-n -o
+    versions-cleaner:run -o
 
 Reduce all the non-orphan histories, keeping maximum 2 versions per history, and delete all the orphan histories, at the same time:
 
-    versions-cleaner:keep-n -n 2 -o
+    versions-cleaner:run -n 2 -o
 
 Same command, but with a time limit. If the process has not reached the end of the tree after 10mn of execution, it will stop gracefully. The next execution will restart from the reached position.
 
-    versions-cleaner:keep-n -n 2 -o -t 600000
+    versions-cleaner:run -n 2 -o -t 600000
 
 ### How to interrupt an execution?
 

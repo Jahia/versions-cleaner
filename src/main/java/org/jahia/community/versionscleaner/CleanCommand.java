@@ -62,9 +62,9 @@ public class CleanCommand implements Action {
     private static final String HUMAN_READABLE_FORMAT = "d' days 'H' hours 'm' minutes 's' seconds'";
     private static final String VERSIONS_PATH = "/jcr:system/jcr:versionStorage";
     private static final String[] INVALID_REFERENCE_NODE_TYPES_TO_REMOVE = new String[]{
-        JcrConstants.NT_HIERARCHYNODE,
-        Constants.JAHIANT_MEMBER,
-        "jnt:reference"
+            JcrConstants.NT_HIERARCHYNODE,
+            Constants.JAHIANT_MEMBER,
+            "jnt:reference"
     };
     private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
     private static final String PAUSE_DURATION_MARKER = "versions-cleaner.pause.duration";
@@ -481,7 +481,7 @@ public class CleanCommand implements Action {
     }
 
     private static boolean processPropertyValue(Session session, Node node, Property property, Value propertyValue,
-            boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
+                                                boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
         int propertyType = propertyValue.getType();
         switch (propertyType) {
             case PropertyType.REFERENCE:
@@ -653,7 +653,7 @@ public class CleanCommand implements Action {
         }
     }
 
-    private static String toReadableDuration(long start){
+    private static String toReadableDuration(long start) {
         return DurationFormatUtils.formatDuration(System.currentTimeMillis() - start, HUMAN_READABLE_FORMAT, true);
     }
 }

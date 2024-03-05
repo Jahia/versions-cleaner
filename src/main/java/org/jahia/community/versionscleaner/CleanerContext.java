@@ -65,7 +65,7 @@ public class CleanerContext {
         lastScanPosition = loadLastScanPosition();
         searchPosition = restartFromLastPosition && lastScanPosition != null;
         if (searchPosition) logger.debug("Will restart from {}", lastScanPosition);
-        else  logger.debug("Restarting from the beginning");
+        else logger.debug("Restarting from the beginning");
         processedVersionHistoriesCount = 0L;
 
         if (logger.isDebugEnabled()) logger.debug("Configurations: {}", printConfigurations());

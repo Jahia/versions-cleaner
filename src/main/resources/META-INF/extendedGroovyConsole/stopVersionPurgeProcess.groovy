@@ -1,6 +1,11 @@
-log.info stopPurge
-log.info stopPurge.class
-System.setProperty("versions-cleaner.interrupt", Boolean.toString(stopPurge))
+if (stopPurge) {
+    log.info "Requested the interruption of the current scan"
+    System.setProperty("versions-cleaner.interrupt", "true")
+} else {
+    log.info "Cancelled the interruption of the current scan"
+    System.clearProperty("versions-cleaner.interrupt")
+}
+log.info ""
 
 // Script configurations
 //script.title=Interrupt the current version purge

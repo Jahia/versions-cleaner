@@ -93,10 +93,10 @@ public class CleanCommand implements Action {
     @Option(name = "-skip", aliases = "--skip-subtree", multiValued = true, description = "Path to be skipped by the process. Useful for example if you have identified some version histories which are particularly massive, and you want to iterate over the rest first. Several paths can be defined")
     private List<String> skippedPaths = null;
 
-    @Option(name = "--threshold-long-history-purge-strategy", description = "Number of versions over which orphaned histories are purged by deleting the versions one by one, to reduce the memory footprint. 1000 by default")
+    @Option(name = "-threshold-long-history-purge-strategy", description = "Number of versions over which orphaned histories are purged by deleting the versions one by one, to reduce the memory footprint. 1000 by default")
     private long thresholdLongHistoryPurgeStrategy = 1000L;
 
-    @Option(name = "--force-restart-from-the-beginning", description = "If specified, the process will restart from the beginning of the tree. Otherwise, it will try to restart from where the previous execution had stopped")
+    @Option(name = "-force-restart-from-the-beginning", description = "If specified, the process will restart from the beginning of the tree. Otherwise, it will try to restart from where the previous execution had stopped")
     private boolean forceRestartFromBeginning = false;
 
     @Override

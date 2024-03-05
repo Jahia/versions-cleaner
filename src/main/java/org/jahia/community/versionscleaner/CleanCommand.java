@@ -146,6 +146,7 @@ public class CleanCommand implements Action {
             return;
         }
 
+        System.clearProperty(INTERRUPT_MARKER);
         if (needsToInterrupt(context)) {
             return;
         }

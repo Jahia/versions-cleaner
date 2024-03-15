@@ -35,11 +35,7 @@ public class CleanerContext {
     private boolean runAsynchronously = Boolean.TRUE;
     private long thresholdLongHistoryPurgeStrategy = 1000;
     private boolean useVersioningApi = Boolean.FALSE;
-    private long startTime;
-    private long deletedVersionsCount;
-    private long deletedVersionHistoriesCount;
-    private long deletedOrphanVersionsCount;
-    private long deletedOrphanVersionHistoriesCount;
+    private long sessionRefreshInterval = 100L;
 
     private Connection dbConnection;
     private JCRSessionWrapper editSession;
@@ -47,6 +43,12 @@ public class CleanerContext {
     private String currentPosition;
     private boolean searchPosition;
     private String lastScanPosition;
+    private long startTime;
+    private long deletedVersionsCount;
+    private long deletedVersionHistoriesCount;
+    private long deletedOrphanVersionsCount;
+    private long deletedOrphanVersionHistoriesCount;
+    private long processedVersionHistoriesCount;
 
     public CleanerContext() {
         interruptionHandler = new AtomicBoolean();
@@ -62,6 +64,11 @@ public class CleanerContext {
         currentPosition = null;
         lastScanPosition = loadLastScanPosition();
         searchPosition = restartFromLastPosition && lastScanPosition != null;
+        if (searchPosition) logger.debug("Will restart from {}", lastScanPosition);
+        else logger.debug("Restarting from the beginning");
+        processedVersionHistoriesCount = 0L;
+
+        if (logger.isDebugEnabled()) logger.debug("Configurations: {}", printConfigurations());
     }
 
     public void finalizeProcess() {
@@ -72,19 +79,41 @@ public class CleanerContext {
         saveLastPosition();
     }
 
+    public String printConfigurations() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("reindexDefaultWorkspace: ").append(reindexDefaultWorkspace).append(", ");
+        sb.append("checkIntegrity: ").append(checkIntegrity).append(", ");
+        sb.append("nbVersionsToKeep: ").append(nbVersionsToKeep).append(", ");
+        sb.append("maxExecutionTimeInMs: ").append(maxExecutionTimeInMs).append(", ");
+        sb.append("deleteOrphanedVersions: ").append(deleteOrphanedVersions).append(", ");
+        sb.append("subtreePath: ").append(subtreePath).append(", ");
+        sb.append("pauseDuration: ").append(pauseDuration).append(", ");
+        sb.append("skippedPaths: ").append(skippedPaths).append(", ");
+        sb.append("restartFromLastPosition: ").append(restartFromLastPosition).append(", ");
+        sb.append("runAsynchronously: ").append(runAsynchronously).append(", ");
+        sb.append("thresholdLongHistoryPurgeStrategy: ").append(thresholdLongHistoryPurgeStrategy).append(", ");
+        sb.append("useVersioningApi: ").append(useVersioningApi).append(", ");
+        sb.append("sessionRefreshInterval: ").append(sessionRefreshInterval);
+        return sb.toString();
+    }
+
     public boolean canProcess(JCRNodeWrapper vh) throws RepositoryException {
+        processedVersionHistoriesCount++;
         currentPosition = vh.getParent().getPath();
         if (searchPosition) {
             searchPosition = !StringUtils.equals(currentPosition, lastScanPosition);
             if (!searchPosition) logger.info("Restarting from {}", currentPosition);
+            return !searchPosition;
         }
-        return searchPosition;
+        return Boolean.TRUE;
     }
 
     private String loadLastScanPosition() {
         final File outputDir = new File(System.getProperty("java.io.tmpdir"), "versions-cleaner");
         try {
-            final List<String> lines = FileUtils.readLines(new File(outputDir, "lastPosition.txt"), StandardCharsets.UTF_8);
+            final File file = new File(outputDir, "lastPosition.txt");
+            if (!file.exists()) return null;
+            final List<String> lines = FileUtils.readLines(file, StandardCharsets.UTF_8);
             if (CollectionUtils.isNotEmpty(lines)) return lines.get(0);
         } catch (IOException e) {
             logger.error("", e);
@@ -93,15 +122,18 @@ public class CleanerContext {
     }
 
     private void saveLastPosition() {
+        logger.debug("Saving the last position");
         final File outputDir = new File(System.getProperty("java.io.tmpdir"), "versions-cleaner");
         final boolean folderCreated = outputDir.exists() || outputDir.mkdirs();
         if (folderCreated && outputDir.canWrite()) {
             try {
                 final File file = new File(outputDir, "lastPosition.txt");
                 if (currentPosition == null) {
-                    file.delete();
+                    FileUtils.deleteQuietly(file);
+                    logger.debug("Saving the last position: no position to save");
                 } else {
                     FileUtils.writeLines(file, StandardCharsets.UTF_8.name(), Collections.singleton(currentPosition));
+                    logger.debug("Saving the last position: {}", currentPosition);
                 }
             } catch (IOException e) {
                 logger.error("", e);
@@ -146,6 +178,16 @@ public class CleanerContext {
     public long getDeletedOrphanVersionHistoriesCount() {
         return deletedOrphanVersionHistoriesCount;
     }
+
+    public void refreshSessions() throws RepositoryException {
+        if (processedVersionHistoriesCount % sessionRefreshInterval != 0) return;
+        editSession.refresh(false);
+        liveSession.refresh(false);
+    }
+
+    /*
+    Getters & setters
+     */
 
     public boolean isReindexDefaultWorkspace() {
         return reindexDefaultWorkspace;
@@ -252,6 +294,11 @@ public class CleanerContext {
 
     public CleanerContext setUseVersioningApi(boolean useVersioningApi) {
         this.useVersioningApi = useVersioningApi;
+        return this;
+    }
+
+    public CleanerContext setSessionRefreshInterval(long sessionRefreshInterval) {
+        this.sessionRefreshInterval = sessionRefreshInterval;
         return this;
     }
 

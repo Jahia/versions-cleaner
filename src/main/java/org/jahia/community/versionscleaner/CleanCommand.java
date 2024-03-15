@@ -54,7 +54,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-@Command(scope = "versions-cleaner", name = "keep-n", description = "Delete all version except the last N versions")
+@Command(scope = "versions-cleaner", name = "run", description = "Run a scan the versions tree, and perform the configured actions")
 @Service
 public class CleanCommand implements Action {
 
@@ -62,11 +62,12 @@ public class CleanCommand implements Action {
     private static final String HUMAN_READABLE_FORMAT = "d' days 'H' hours 'm' minutes 's' seconds'";
     private static final String VERSIONS_PATH = "/jcr:system/jcr:versionStorage";
     private static final String[] INVALID_REFERENCE_NODE_TYPES_TO_REMOVE = new String[]{
-        JcrConstants.NT_HIERARCHYNODE,
-        Constants.JAHIANT_MEMBER,
-        "jnt:reference"
+            JcrConstants.NT_HIERARCHYNODE,
+            Constants.JAHIANT_MEMBER,
+            "jnt:reference"
     };
     private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
+    private static final String PAUSE_DURATION_MARKER = "versions-cleaner.pause.duration";
 
     @Option(name = "-r", aliases = "--reindex-default-workspace", description = "Reindex default workspace before cleaning")
     private Boolean reindexDefaultWorkspace = Boolean.FALSE;
@@ -83,20 +84,20 @@ public class CleanCommand implements Action {
     @Option(name = "-o", aliases = "--delete-orphaned-versions", description = "Delete orphaned versions")
     private Boolean deleteOrphanedVersions = Boolean.FALSE;
 
-    @Option(name = "-p", aliases = "--subtree-path", description = "Subtree of versions tree where the purge has to be run. Must start with a /")
+    @Option(name = "-p", aliases = "--subtree-path", description = "Subtree of versions tree where the purge has to be run")
     private String subtreePath = null;
 
-    @Option(name = "-pause", description = "Duration of the pause between 2 version deletions. No pause if less or equal to zero")
+    @Option(name = "-pause", description = "Duration of the pause between 2 version deletions. No pause if less or equal to zero. Zero by default")
     private Long pauseDuration = 0L;
 
-    @Option(name = "-skip", description = "--skip-subtree", multiValued = true)
-    private List<String> skippedPaths;
+    @Option(name = "-skip", aliases = "--skip-subtree", multiValued = true, description = "Path to be skipped by the process. Useful for example if you have identified some version histories which are particularly massive, and you want to iterate over the rest first. Several paths can be defined")
+    private List<String> skippedPaths = null;
 
-    @Option(name = "--threshold-long-history-purge-strategy")
+    @Option(name = "-threshold-long-history-purge-strategy", description = "Number of versions over which orphaned histories are purged by deleting the versions one by one, to reduce the memory footprint. 1000 by default")
     private long thresholdLongHistoryPurgeStrategy = 1000L;
 
-    @Option(name = "--restart-from-last-position")
-    private boolean restartFromLastPosition = false;
+    @Option(name = "-force-restart-from-the-beginning", description = "If specified, the process will restart from the beginning of the tree. Otherwise, it will try to restart from where the previous execution had stopped")
+    private boolean forceRestartFromBeginning = false;
 
     @Override
     public Object execute() throws RepositoryException {
@@ -110,29 +111,32 @@ public class CleanCommand implements Action {
                 .setPauseDuration(pauseDuration)
                 .setSkippedPaths(skippedPaths)
                 .setThresholdLongHistoryPurgeStrategy(thresholdLongHistoryPurgeStrategy)
-                .setRestartFromLastPosition(restartFromLastPosition);
+                .setRestartFromLastPosition(!forceRestartFromBeginning);
 
         execute(context);
         return null;
     }
 
     public static void execute(CleanerContext context) throws RepositoryException {
-        try {
-            context.startProcess();
-            if (context.isRunAsynchronously()) {
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    try {
-                        Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
-                        deleteVersions(context);
-                    } catch (RepositoryException e) {
-                        logger.error("", e);
-                    }
-                });
-            } else {
+        if (context.isRunAsynchronously()) {
+            Executors.newSingleThreadExecutor().execute(() -> {
+                try {
+                    Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+                    context.startProcess();
+                    deleteVersions(context);
+                } catch (RepositoryException e) {
+                    logger.error("", e);
+                } finally {
+                    context.finalizeProcess();
+                }
+            });
+        } else {
+            try {
+                context.startProcess();
                 deleteVersions(context);
+            } finally {
+                context.finalizeProcess();
             }
-        } finally {
-            context.finalizeProcess();
         }
     }
 
@@ -142,6 +146,7 @@ public class CleanCommand implements Action {
             return;
         }
 
+        System.clearProperty(INTERRUPT_MARKER);
         if (needsToInterrupt(context)) {
             return;
         }
@@ -203,8 +208,8 @@ public class CleanCommand implements Action {
     private static void processNode(JCRNodeWrapper node, CleanerContext context) throws RepositoryException {
         if (needsToInterrupt(context)) return;
 
+        final String path = node.getPath();
         if (CollectionUtils.isNotEmpty(context.getSkippedPaths())) {
-            final String path = node.getPath();
             if (context.getSkippedPaths().contains(path)) {
                 logger.info("Skipping {}", path);
                 return;
@@ -212,6 +217,7 @@ public class CleanCommand implements Action {
         }
 
         if (node.isNodeType(Constants.NT_VERSIONHISTORY)) {
+            logger.debug("Processing {}", path);
             if (!context.canProcess(node)) return;
             checkNodeIntegrity(context.getEditSession(), node, true, true, context);
             if (isOrphanedHistory(node, context)) {
@@ -219,13 +225,13 @@ public class CleanCommand implements Action {
             } else {
                 keepLastNVersions((VersionHistory) node, context);
             }
+            context.refreshSessions();
         } else {
             final JCRNodeIteratorWrapper childNodes = node.getNodes();
             while (childNodes.hasNext()) {
                 processNode((JCRNodeWrapper) childNodes.nextNode(), context);
+                if (needsToInterrupt(context)) return;
             }
-            context.getEditSession().refresh(false);
-            context.getLiveSession().refresh(false);
         }
     }
 
@@ -254,22 +260,26 @@ public class CleanCommand implements Action {
     }
 
     private static void deleteOrphanedHistory(VersionHistory vh, CleanerContext context) throws RepositoryException {
+        if (!context.isDeleteOrphanedVersions()) return;
+
+        logger.debug("Orphan version history to delete: {}", vh.getPath());
         final RangeIterator versionIterator = getVersionsIterator(vh, context);
         long nbVersions = getVersionsCount(vh, versionIterator, context);
         if (nbVersions > context.getThresholdLongHistoryPurgeStrategy()) {
-            logger.warn("{} has {} versions", vh.getPath(), nbVersions);
+            final String vhPath = vh.getPath();
+            logger.warn("{} has {} versions", vhPath, nbVersions);
             final List<String> versionNames = getVersionNames(versionIterator, context);
             if (needsToInterrupt(context)) return;
             final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
             context.trackDeletedVersions(deletedVersions, true);
             if (needsToInterrupt(context)) return;
 
-            final long remainingVersions = getVersionsCount(vh, getVersionsIterator(vh, context), context);
+            final long remainingVersions = nbVersions - deletedVersions;
             if (remainingVersions > context.getThresholdLongHistoryPurgeStrategy()) {
-                logger.debug(String.format("Finished processing %s , deleted %s versions, %s versions remaining", vh.getPath(), deletedVersions, remainingVersions));
+                logger.debug(String.format("Finished processing %s , deleted %s versions, %s versions remaining", vhPath, deletedVersions, remainingVersions));
                 return;
             } else {
-                logger.debug("Finished processing {} , deleted {} versions, handling it from now on as any other orphaned version history", vh.getPath(), deletedVersions);
+                logger.debug("Finished processing {} , deleted {} versions, handling it from now on as any other orphaned version history", vhPath, deletedVersions);
                 nbVersions = remainingVersions;
             }
         }
@@ -294,6 +304,10 @@ public class CleanCommand implements Action {
     }
 
     private static List<String> getVersionNames(RangeIterator versionIterator, CleanerContext context) throws RepositoryException {
+        if (versionIterator.getPosition() != 0) {
+            throw new IllegalArgumentException("The provided iterator has already been iterated");
+        }
+
         final List<String> versionNames = new ArrayList<>();
         while (!needsToInterrupt(context) && versionIterator.hasNext()) {
             final Node version = (Node) versionIterator.next();
@@ -328,9 +342,18 @@ public class CleanCommand implements Action {
     private static void keepLastNVersions(VersionHistory vh, CleanerContext context) {
         if (context.getNbVersionsToKeep() < 0) return;
 
+        String path;
+        try {
+            path = vh.getPath();
+        } catch (RepositoryException e) {
+            logger.error("", e);
+            path = "<failed to calculate the path>";
+        }
+        logger.debug("Non orphan version history to reduce: {}", path);
         try {
             final RangeIterator versionIterator = getVersionsIterator(vh, context);
             final long nbVersions = getVersionsCount(vh, versionIterator, context);
+            logger.debug("{} has {} versions", path, nbVersions);
             // Do clean if we have more versions than the desired number + 1 for the root version
             if (nbVersions > context.getNbVersionsToKeep() + 1) {
                 final List<String> versionNames = getVersionNames(versionIterator, context);
@@ -417,7 +440,7 @@ public class CleanCommand implements Action {
 
     private static long getSleepDuration(CleanerContext context) {
         try {
-            return Long.parseLong(System.getProperty("version-cleaner.pause.duration"));
+            return Long.parseLong(System.getProperty(PAUSE_DURATION_MARKER));
         } catch (NumberFormatException ignored) {
             return context.getPauseDuration();
         }
@@ -458,7 +481,7 @@ public class CleanCommand implements Action {
     }
 
     private static boolean processPropertyValue(Session session, Node node, Property property, Value propertyValue,
-            boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
+                                                boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
         int propertyType = propertyValue.getType();
         switch (propertyType) {
             case PropertyType.REFERENCE:
@@ -592,8 +615,9 @@ public class CleanCommand implements Action {
             logger.info("Interrupting the process");
             System.clearProperty(INTERRUPT_MARKER);
             context.getInterruptionHandler().set(Boolean.TRUE);
-            return context.getInterruptionHandler().get();
+            return Boolean.TRUE;
         }
+        if (context.getInterruptionHandler().get()) return Boolean.TRUE;
         if (context.getMaxExecutionTimeInMs() <= 0) return Boolean.FALSE;
         if (context.getStartTime() < 0) return Boolean.FALSE;
         return System.currentTimeMillis() >= context.getStartTime() + context.getMaxExecutionTimeInMs();
@@ -603,7 +627,7 @@ public class CleanCommand implements Action {
         if (StringUtils.isBlank(relativePath) || "/".equals(relativePath)) {
             return parent;
         }
-        return parent.getNode(relativePath);
+        return parent.getNode(relativePath.startsWith("/") ? relativePath.substring(1) : relativePath);
     }
 
     private static String toPrintableName(String versionName) {
@@ -629,7 +653,7 @@ public class CleanCommand implements Action {
         }
     }
 
-    private static String toReadableDuration(long start){
+    private static String toReadableDuration(long start) {
         return DurationFormatUtils.formatDuration(System.currentTimeMillis() - start, HUMAN_READABLE_FORMAT, true);
     }
 }

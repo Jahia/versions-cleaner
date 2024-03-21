@@ -268,7 +268,7 @@ public class CleanCommand implements Action {
         if (nbVersions > context.getThresholdLongHistoryPurgeStrategy()) {
             final String vhPath = vh.getPath();
             logger.warn("{} has {} versions", vhPath, nbVersions);
-            final List<String> versionNames = getVersionNames(versionIterator, context);
+            final List<String> versionNames = getNonRootVersionNames(versionIterator, context);
             if (needsToInterrupt(context)) return;
             final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
             context.trackDeletedVersions(deletedVersions, true);
@@ -303,7 +303,7 @@ public class CleanCommand implements Action {
         }
     }
 
-    private static List<String> getVersionNames(RangeIterator versionIterator, CleanerContext context) throws RepositoryException {
+    private static List<String> getNonRootVersionNames(RangeIterator versionIterator, CleanerContext context) throws RepositoryException {
         if (versionIterator.getPosition() != 0) {
             throw new IllegalArgumentException("The provided iterator has already been iterated");
         }
@@ -356,10 +356,9 @@ public class CleanCommand implements Action {
             logger.debug("{} has {} versions", path, nbVersions);
             // Do clean if we have more versions than the desired number + 1 for the root version
             if (nbVersions > context.getNbVersionsToKeep() + 1) {
-                final List<String> versionNames = getVersionNames(versionIterator, context);
-                final int nbNames = versionNames.size();
-                for (int i = nbNames - 1; i > nbVersions - 1 - context.getNbVersionsToKeep(); i--) {
-                    versionNames.remove(i);
+                final List<String> versionNames = getNonRootVersionNames(versionIterator, context);
+                for (int i = versionNames.size(); i > context.getNbVersionsToKeep(); i--) {
+                    versionNames.remove(i - 1);
                 }
                 final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
                 context.trackDeletedVersions(deletedVersions, false);

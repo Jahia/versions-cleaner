@@ -433,6 +433,14 @@ public class CleanCommand implements Action {
             versionNames.addAll(skippedVersionNames);
             skippedVersionNames.clear();
         } while (!needsToInterrupt(context) && nbVersionPurgedInCurrentLoop > 0 && !versionNames.isEmpty());
+        
+        if (deletedVersions < names.size()) {
+            try {
+                logger.warn(String.format("Skipped %s versions on %s", names.size() - deletedVersions, vh.getPath()));
+            } catch (RepositoryException e) {
+                logger.error("", e);
+            }
+        }
 
         return deletedVersions;
     }

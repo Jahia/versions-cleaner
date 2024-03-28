@@ -357,8 +357,8 @@ public class CleanCommand implements Action {
             // Do clean if we have more versions than the desired number + 1 for the root version
             if (nbVersions > context.getNbVersionsToKeep() + 1) {
                 final List<String> versionNames = getNonRootVersionNames(versionIterator, context);
-                for (int i = versionNames.size(); i > context.getNbVersionsToKeep(); i--) {
-                    versionNames.remove(i - 1);
+                for (int i = 0; i < context.getNbVersionsToKeep(); i++) {
+                    versionNames.remove(versionNames.size() - 1);
                 }
                 final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
                 context.trackDeletedVersions(deletedVersions, false);

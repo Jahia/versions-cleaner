@@ -42,6 +42,7 @@ public class CleanerContext {
     private JCRSessionWrapper liveSession;
     private String currentPosition;
     private boolean searchPosition;
+    private boolean searchPositionFound = false;
     private String lastScanPosition;
     private long startTime;
     private long deletedVersionsCount;
@@ -100,10 +101,10 @@ public class CleanerContext {
     public boolean canProcess(JCRNodeWrapper vh) throws RepositoryException {
         processedVersionHistoriesCount++;
         currentPosition = vh.getParent().getPath();
-        if (searchPosition) {
-            searchPosition = !StringUtils.equals(currentPosition, lastScanPosition);
-            if (!searchPosition) logger.info("Restarting from {}", currentPosition);
-            return !searchPosition;
+        if (searchPosition && !searchPositionFound) {
+            searchPositionFound = StringUtils.startsWith(currentPosition, lastScanPosition);
+            if (searchPositionFound) logger.info("Restarting from {}", currentPosition);
+            return searchPositionFound;
         }
         return Boolean.TRUE;
     }

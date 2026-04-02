@@ -217,8 +217,8 @@ public class CleanCommand implements Action {
         }
 
         if (node.isNodeType(Constants.NT_VERSIONHISTORY)) {
-            logger.debug("Processing {}", path);
             if (!context.canProcess(node)) return;
+            logger.debug("Processing {}", path);
             checkNodeIntegrity(context.getEditSession(), node, true, true, context);
             if (isOrphanedHistory(node, context)) {
                 deleteOrphanedHistory((VersionHistory) node, context);

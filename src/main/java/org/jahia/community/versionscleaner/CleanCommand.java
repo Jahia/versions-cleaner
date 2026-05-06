@@ -60,6 +60,11 @@ public class CleanCommand implements Action {
 
     private static final Logger logger = LoggerFactory.getLogger(CleanCommand.class);
     private static final String HUMAN_READABLE_FORMAT = "d' days 'H' hours 'm' minutes 's' seconds'";
+    private static final java.util.concurrent.atomic.AtomicBoolean RUNNING = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    public static boolean isRunning() {
+        return RUNNING.get();
+    }
     private static final String VERSIONS_PATH = "/jcr:system/jcr:versionStorage";
     private static final String[] INVALID_REFERENCE_NODE_TYPES_TO_REMOVE = new String[]{
             JcrConstants.NT_HIERARCHYNODE,
@@ -120,6 +125,7 @@ public class CleanCommand implements Action {
     public static void execute(CleanerContext context) throws RepositoryException {
         if (context.isRunAsynchronously()) {
             Executors.newSingleThreadExecutor().execute(() -> {
+                RUNNING.set(true);
                 try {
                     Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
                     context.startProcess();
@@ -127,14 +133,17 @@ public class CleanCommand implements Action {
                 } catch (RepositoryException e) {
                     logger.error("", e);
                 } finally {
+                    RUNNING.set(false);
                     context.finalizeProcess();
                 }
             });
         } else {
+            RUNNING.set(true);
             try {
                 context.startProcess();
                 deleteVersions(context);
             } finally {
+                RUNNING.set(false);
                 context.finalizeProcess();
             }
         }

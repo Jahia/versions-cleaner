@@ -1,0 +1,25 @@
+{
+  "label": {
+    "menu_entry": "Versions Cleaner",
+    "title": "Versions Cleaner",
+    "description": "Scan the JCR version storage tree to reduce history size and remove orphaned versions. The operation runs asynchronously in the background.",
+    "run": "Run cleaner",
+    "running": "Clean in progress…",
+    "started": "Versions cleaner started successfully.",
+    "alreadyRunning": "A clean operation is already in progress.",
+    "error": "Failed to start the cleaner. Check server logs for details.",
+    "nbVersionsToKeep": "Versions to keep",
+    "nbVersionsToKeepTooltip": "Number of versions to keep per non-orphan history. Set to -1 to skip non-orphan histories entirely.",
+    "deleteOrphanedVersions": "Delete orphaned versions",
+    "checkIntegrity": "Check and fix reference integrity",
+    "reindexDefaultWorkspace": "Reindex default workspace first",
+    "maxExecutionTimeInMs": "Max execution time (ms)",
+    "maxExecutionTimeTooltip": "Maximum execution time in milliseconds. Set to 0 for unlimited. The process saves its position so it can resume where it stopped.",
+    "pauseDuration": "Pause between deletions (ms)",
+    "pauseDurationTooltip": "Milliseconds to sleep between each version deletion. Set to 0 to disable.",
+    "subtreePath": "Subtree path",
+    "subtreePathTooltip": "Restrict the scan to a subtree of the version storage. Leave blank to process the full tree.",
+    "subtreePathPlaceholder": "e.g. 00/10/xx…",
+    "forceRestartFromBeginning": "Force restart from beginning"
+  }
+}

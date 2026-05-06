@@ -1,0 +1,145 @@
+.vc_container {
+  font-family: 'Nunito Sans', sans-serif;
+  color: var(--color-dark, #131c21);
+  max-width: 720px;
+  padding: var(--spacing-large, 24px);
+}
+
+.vc_header h2 {
+  margin: 0;
+  padding: 0;
+  margin-left: 25px;
+  font-size: 25px;
+  line-height: 85px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.vc_description {
+  margin-bottom: var(--spacing-large, 24px);
+  padding: var(--spacing-medium, 16px);
+  background: var(--color-light, #fdfdfd);
+  border-left: 3px solid var(--color-accent, #00a0e3);
+  border-radius: 0 var(--radius, 4px) var(--radius, 4px) 0;
+}
+
+.vc_alert {
+  padding: var(--spacing-small, 8px) var(--spacing-medium, 16px);
+  border-radius: var(--radius, 4px);
+  font-size: 13px;
+  margin-bottom: var(--spacing-medium, 16px);
+  border: 1px solid transparent;
+
+  &--success {
+    background: #eaf7eb;
+    border-color: var(--color-success, #6abb6d);
+    color: var(--color-success_dark, #267729);
+  }
+
+  &--warning {
+    background: #fff8e1;
+    border-color: var(--color-warning, #ffc107);
+    color: #856404;
+  }
+
+  &--error {
+    background: #fdecea;
+    border-color: var(--color-danger, #f44053);
+    color: var(--color-danger_dark, #840d0f);
+  }
+}
+
+.vc_running {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-medium, 16px);
+  padding: var(--spacing-medium, 16px) 0;
+  margin-bottom: var(--spacing-medium, 16px);
+}
+
+.vc_running_text {
+  font-size: 14px;
+  color: var(--color-gray, #7a7f88);
+}
+
+.vc_form {
+  margin-bottom: var(--spacing-large, 24px);
+}
+
+.vc_fieldGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-medium, 16px);
+  margin-bottom: var(--spacing-medium, 16px);
+}
+
+.vc_label {
+  min-width: 200px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-dark, #131c21);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vc_tooltip {
+  cursor: help;
+  color: var(--color-gray, #7a7f88);
+  font-size: 12px;
+}
+
+.vc_input {
+  width: 120px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-gray_light, #dadada);
+  border-radius: var(--radius, 4px);
+  font-size: 14px;
+  font-family: 'Nunito Sans', sans-serif;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent, #00a0e3);
+  }
+}
+
+.vc_inputWide {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--color-gray_light, #dadada);
+  border-radius: var(--radius, 4px);
+  font-size: 14px;
+  font-family: 'Nunito Sans', sans-serif;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent, #00a0e3);
+  }
+}
+
+.vc_checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small, 8px);
+  margin-bottom: var(--spacing-large, 24px);
+}
+
+.vc_checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-small, 8px);
+  font-size: 14px;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+}
+
+.vc_actions {
+  margin-top: var(--spacing-medium, 16px);
+}

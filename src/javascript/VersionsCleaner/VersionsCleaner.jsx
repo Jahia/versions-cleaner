@@ -4,7 +4,6 @@ import {useTranslation} from 'react-i18next';
 import {Button, CheckboxItem, Input, Loader, NumberInput, Tooltip, Typography} from '@jahia/moonstone';
 import styles from './VersionsCleaner.scss';
 import {IS_RUNNING, RUN_CLEANER} from './VersionsCleaner.gql';
-import {SchedulerConfig} from './SchedulerConfig';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -201,10 +200,6 @@ export const VersionsCleanerAdmin = () => {
                     onClick={handleRun}
                 />
             </div>
-
-            <hr className={styles.vc_divider}/>
-
-            <SchedulerConfig/>
         </div>
     );
 };

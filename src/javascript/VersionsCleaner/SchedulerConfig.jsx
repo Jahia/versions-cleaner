@@ -64,10 +64,13 @@ export const SchedulerConfig = () => {
     };
 
     return (
-        <div className={styles.vc_section}>
-            <div className={styles.vc_sectionHeader}>
-                <Typography variant="subheading" weight="semiBold">{t('label.scheduler.title')}</Typography>
-                <Typography variant="caption" className={styles.vc_sectionHint}>{t('label.scheduler.restartHint')}</Typography>
+        <div className={styles.vc_container}>
+            <div className={styles.vc_header}>
+                <h2>{t('label.menu_configuration')}</h2>
+            </div>
+
+            <div className={styles.vc_description}>
+                <Typography>{t('label.scheduler.description')}</Typography>
             </div>
 
             {saveStatus === 'success' && (
@@ -161,6 +164,10 @@ export const SchedulerConfig = () => {
                         onChange={(e, v, checked) => handleChange('reindexDefaultWorkspace', checked)}
                     />
                 </div>
+            </div>
+
+            <div className={styles.vc_restartHint}>
+                <Typography variant="caption">{t('label.scheduler.restartHint')}</Typography>
             </div>
 
             <div className={styles.vc_actions}>

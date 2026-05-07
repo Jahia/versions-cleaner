@@ -126,19 +126,6 @@
   margin-bottom: var(--spacing-large, 24px);
 }
 
-.vc_checkboxLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-small, 8px);
-  font-size: 14px;
-  cursor: pointer;
-
-  input[type='checkbox'] {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-  }
-}
 
 .vc_actions {
   margin-top: var(--spacing-medium, 16px);

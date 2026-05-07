@@ -1,0 +1,160 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.4.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "version": 1,
+  "serialNumber": "urn:uuid:6a255a5b-fb64-4d95-992c-82a9b4eae3cb",
+  "metadata": {
+    "timestamp": "2026-05-07T15:17:23.407Z",
+    "tools": [
+      {
+        "name": "webpack",
+        "version": "5.106.2"
+      },
+      {
+        "vendor": "@cyclonedx",
+        "name": "webpack-plugin",
+        "version": "5.3.2",
+        "externalReferences": [
+          {
+            "url": "git+https://github.com/CycloneDX/cyclonedx-webpack-plugin.git",
+            "type": "vcs",
+            "comment": "as detected from PackageJson property \"repository.url\""
+          },
+          {
+            "url": "https://github.com/CycloneDX/cyclonedx-webpack-plugin#readme",
+            "type": "website",
+            "comment": "as detected from PackageJson property \"homepage\""
+          },
+          {
+            "url": "https://github.com/CycloneDX/cyclonedx-webpack-plugin/issues",
+            "type": "issue-tracker",
+            "comment": "as detected from PackageJson property \"bugs.url\""
+          }
+        ]
+      },
+      {
+        "vendor": "@cyclonedx",
+        "name": "cyclonedx-library",
+        "version": "10.0.0",
+        "externalReferences": [
+          {
+            "url": "git+https://github.com/CycloneDX/cyclonedx-javascript-library.git",
+            "type": "vcs",
+            "comment": "as detected from PackageJson property \"repository.url\""
+          },
+          {
+            "url": "https://github.com/CycloneDX/cyclonedx-javascript-library#readme",
+            "type": "website",
+            "comment": "as detected from PackageJson property \"homepage\""
+          },
+          {
+            "url": "https://github.com/CycloneDX/cyclonedx-javascript-library/issues",
+            "type": "issue-tracker",
+            "comment": "as detected from PackageJson property \"bugs.url\""
+          }
+        ]
+      }
+    ],
+    "component": {
+      "type": "library",
+      "name": "versions-cleaner",
+      "group": "@jahia",
+      "version": "2.3.1-SNAPSHOT",
+      "bom-ref": "@jahia/versions-cleaner@2.3.1-SNAPSHOT",
+      "author": "Jahia Customer Support Team",
+      "description": "Versions Cleaner admin UI for Jahia",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40jahia/versions-cleaner@2.3.1-SNAPSHOT"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "style-loader",
+      "version": "3.3.4",
+      "bom-ref": "style-loader@3.3.4",
+      "author": "Tobias Koppers @sokra",
+      "description": "style loader module for webpack",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/style-loader@3.3.4?vcs_url=git%2Bhttps%3A%2F%2Fgithub.com%2Fwebpack-contrib%2Fstyle-loader.git",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/webpack-contrib/style-loader.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/webpack-contrib/style-loader",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/webpack-contrib/style-loader/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "css-loader",
+      "version": "6.11.0",
+      "bom-ref": "css-loader@6.11.0",
+      "author": "Tobias Koppers @sokra",
+      "description": "css loader module for webpack",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/css-loader@6.11.0?vcs_url=git%2Bhttps%3A%2F%2Fgithub.com%2Fwebpack-contrib%2Fcss-loader.git",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/webpack-contrib/css-loader.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/webpack-contrib/css-loader",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/webpack-contrib/css-loader/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "@jahia/versions-cleaner@2.3.1-SNAPSHOT",
+      "dependsOn": [
+        "style-loader@3.3.4",
+        "css-loader@6.11.0"
+      ]
+    },
+    {
+      "ref": "style-loader@3.3.4"
+    },
+    {
+      "ref": "css-loader@6.11.0"
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.4" version="1" serialNumber="urn:uuid:6a255a5b-fb64-4d95-992c-82a9b4eae3cb">
+  <metadata>
+    <timestamp>2026-05-07T15:17:23.407Z</timestamp>
+    <tools>
+      <tool>
+        <name>webpack</name>
+        <version>5.106.2</version>
+      </tool>
+      <tool>
+        <vendor>@cyclonedx</vendor>
+        <name>webpack-plugin</name>
+        <version>5.3.2</version>
+        <externalReferences>
+          <reference type="vcs">
+            <url>git+https://github.com/CycloneDX/cyclonedx-webpack-plugin.git</url>
+            <comment>as detected from PackageJson property "repository.url"</comment>
+          </reference>
+          <reference type="website">
+            <url>https://github.com/CycloneDX/cyclonedx-webpack-plugin#readme</url>
+            <comment>as detected from PackageJson property "homepage"</comment>
+          </reference>
+          <reference type="issue-tracker">
+            <url>https://github.com/CycloneDX/cyclonedx-webpack-plugin/issues</url>
+            <comment>as detected from PackageJson property "bugs.url"</comment>
+          </reference>
+        </externalReferences>
+      </tool>
+      <tool>
+        <vendor>@cyclonedx</vendor>
+        <name>cyclonedx-library</name>
+        <version>10.0.0</version>
+        <externalReferences>
+          <reference type="vcs">
+            <url>git+https://github.com/CycloneDX/cyclonedx-javascript-library.git</url>
+            <comment>as detected from PackageJson property "repository.url"</comment>
+          </reference>
+          <reference type="website">
+            <url>https://github.com/CycloneDX/cyclonedx-javascript-library#readme</url>
+            <comment>as detected from PackageJson property "homepage"</comment>
+          </reference>
+          <reference type="issue-tracker">
+            <url>https://github.com/CycloneDX/cyclonedx-javascript-library/issues</url>
+            <comment>as detected from PackageJson property "bugs.url"</comment>
+          </reference>
+        </externalReferences>
+      </tool>
+    </tools>
+    <component type="library" bom-ref="@jahia/versions-cleaner@2.3.1-SNAPSHOT">
+      <author>Jahia Customer Support Team</author>
+      <group>@jahia</group>
+      <name>versions-cleaner</name>
+      <version>2.3.1-SNAPSHOT</version>
+      <description>Versions Cleaner admin UI for Jahia</description>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:npm/%40jahia/versions-cleaner@2.3.1-SNAPSHOT</purl>
+    </component>
+  </metadata>
+  <components>
+    <component type="library" bom-ref="style-loader@3.3.4">
+      <author>Tobias Koppers @sokra</author>
+      <name>style-loader</name>
+      <version>3.3.4</version>
+      <description>style loader module for webpack</description>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:npm/style-loader@3.3.4?vcs_url=git%2Bhttps%3A%2F%2Fgithub.com%2Fwebpack-contrib%2Fstyle-loader.git</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>git+https://github.com/webpack-contrib/style-loader.git</url>
+          <comment>as detected from PackageJson property "repository.url"</comment>
+        </reference>
+        <reference type="website">
+          <url>https://github.com/webpack-contrib/style-loader</url>
+          <comment>as detected from PackageJson property "homepage"</comment>
+        </reference>
+        <reference type="issue-tracker">
+          <url>https://github.com/webpack-contrib/style-loader/issues</url>
+          <comment>as detected from PackageJson property "bugs.url"</comment>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="css-loader@6.11.0">
+      <author>Tobias Koppers @sokra</author>
+      <name>css-loader</name>
+      <version>6.11.0</version>
+      <description>css loader module for webpack</description>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:npm/css-loader@6.11.0?vcs_url=git%2Bhttps%3A%2F%2Fgithub.com%2Fwebpack-contrib%2Fcss-loader.git</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>git+https://github.com/webpack-contrib/css-loader.git</url>
+          <comment>as detected from PackageJson property "repository.url"</comment>
+        </reference>
+        <reference type="website">
+          <url>https://github.com/webpack-contrib/css-loader</url>
+          <comment>as detected from PackageJson property "homepage"</comment>
+        </reference>
+        <reference type="issue-tracker">
+          <url>https://github.com/webpack-contrib/css-loader/issues</url>
+          <comment>as detected from PackageJson property "bugs.url"</comment>
+        </reference>
+      </externalReferences>
+    </component>
+  </components>
+  <dependencies>
+    <dependency ref="@jahia/versions-cleaner@2.3.1-SNAPSHOT">
+      <dependency ref="style-loader@3.3.4"/>
+      <dependency ref="css-loader@6.11.0"/>
+    </dependency>
+    <dependency ref="style-loader@3.3.4"/>
+    <dependency ref="css-loader@6.11.0"/>
+  </dependencies>
+</bom>

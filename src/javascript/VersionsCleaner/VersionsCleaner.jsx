@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {useMutation, useQuery} from '@apollo/client';
 import {useTranslation} from 'react-i18next';
-import {Button, Loader, Typography} from '@jahia/moonstone';
+import {Button, CheckboxItem, Input, Loader, NumberInput, Tooltip, Typography} from '@jahia/moonstone';
 import styles from './VersionsCleaner.scss';
 import {IS_RUNNING, RUN_CLEANER} from './VersionsCleaner.gql';
 
@@ -111,13 +111,13 @@ export const VersionsCleanerAdmin = () => {
                 <div className={styles.vc_fieldGroup}>
                     <label className={styles.vc_label} htmlFor="vc-nb-versions">
                         {t('label.nbVersionsToKeep')}
-                        <span className={styles.vc_tooltip} title={t('label.nbVersionsToKeepTooltip')}>ⓘ</span>
+                        <Tooltip label={t('label.nbVersionsToKeepTooltip')}><span className={styles.vc_tooltip}>ⓘ</span></Tooltip>
                     </label>
-                    <input
-                        type="number"
+                    <NumberInput
                         id="vc-nb-versions"
                         className={styles.vc_input}
-                        value={form.nbVersionsToKeep}
+                        value={String(form.nbVersionsToKeep)}
+                        allowNegative
                         onChange={e => handleChange('nbVersionsToKeep', Number.parseInt(e.target.value, 10))}
                     />
                 </div>
@@ -125,14 +125,13 @@ export const VersionsCleanerAdmin = () => {
                 <div className={styles.vc_fieldGroup}>
                     <label className={styles.vc_label} htmlFor="vc-max-time">
                         {t('label.maxExecutionTimeInMs')}
-                        <span className={styles.vc_tooltip} title={t('label.maxExecutionTimeTooltip')}>ⓘ</span>
+                        <Tooltip label={t('label.maxExecutionTimeTooltip')}><span className={styles.vc_tooltip}>ⓘ</span></Tooltip>
                     </label>
-                    <input
-                        type="number"
+                    <NumberInput
                         id="vc-max-time"
                         className={styles.vc_input}
-                        min="0"
-                        value={form.maxExecutionTimeInMs}
+                        value={String(form.maxExecutionTimeInMs)}
+                        min={0}
                         onChange={e => handleChange('maxExecutionTimeInMs', Number.parseInt(e.target.value, 10) || 0)}
                     />
                 </div>
@@ -140,14 +139,13 @@ export const VersionsCleanerAdmin = () => {
                 <div className={styles.vc_fieldGroup}>
                     <label className={styles.vc_label} htmlFor="vc-pause">
                         {t('label.pauseDuration')}
-                        <span className={styles.vc_tooltip} title={t('label.pauseDurationTooltip')}>ⓘ</span>
+                        <Tooltip label={t('label.pauseDurationTooltip')}><span className={styles.vc_tooltip}>ⓘ</span></Tooltip>
                     </label>
-                    <input
-                        type="number"
+                    <NumberInput
                         id="vc-pause"
                         className={styles.vc_input}
-                        min="0"
-                        value={form.pauseDuration}
+                        value={String(form.pauseDuration)}
+                        min={0}
                         onChange={e => handleChange('pauseDuration', Number.parseInt(e.target.value, 10) || 0)}
                     />
                 </div>
@@ -155,10 +153,9 @@ export const VersionsCleanerAdmin = () => {
                 <div className={styles.vc_fieldGroup}>
                     <label className={styles.vc_label} htmlFor="vc-subtree">
                         {t('label.subtreePath')}
-                        <span className={styles.vc_tooltip} title={t('label.subtreePathTooltip')}>ⓘ</span>
+                        <Tooltip label={t('label.subtreePathTooltip')}><span className={styles.vc_tooltip}>ⓘ</span></Tooltip>
                     </label>
-                    <input
-                        type="text"
+                    <Input
                         id="vc-subtree"
                         className={styles.vc_inputWide}
                         placeholder={t('label.subtreePathPlaceholder')}
@@ -168,41 +165,30 @@ export const VersionsCleanerAdmin = () => {
                 </div>
 
                 <div className={styles.vc_checkboxGroup}>
-                    <label className={styles.vc_checkboxLabel}>
-                        <input
-                            type="checkbox"
-                            checked={form.deleteOrphanedVersions}
-                            onChange={e => handleChange('deleteOrphanedVersions', e.target.checked)}
-                        />
-                        {t('label.deleteOrphanedVersions')}
-                    </label>
-
-                    <label className={styles.vc_checkboxLabel}>
-                        <input
-                            type="checkbox"
-                            checked={form.checkIntegrity}
-                            onChange={e => handleChange('checkIntegrity', e.target.checked)}
-                        />
-                        {t('label.checkIntegrity')}
-                    </label>
-
-                    <label className={styles.vc_checkboxLabel}>
-                        <input
-                            type="checkbox"
-                            checked={form.reindexDefaultWorkspace}
-                            onChange={e => handleChange('reindexDefaultWorkspace', e.target.checked)}
-                        />
-                        {t('label.reindexDefaultWorkspace')}
-                    </label>
-
-                    <label className={styles.vc_checkboxLabel}>
-                        <input
-                            type="checkbox"
-                            checked={form.forceRestartFromBeginning}
-                            onChange={e => handleChange('forceRestartFromBeginning', e.target.checked)}
-                        />
-                        {t('label.forceRestartFromBeginning')}
-                    </label>
+                    <CheckboxItem
+                        id="vc-delete-orphaned"
+                        label={t('label.deleteOrphanedVersions')}
+                        checked={form.deleteOrphanedVersions}
+                        onChange={(e, v, checked) => handleChange('deleteOrphanedVersions', checked)}
+                    />
+                    <CheckboxItem
+                        id="vc-check-integrity"
+                        label={t('label.checkIntegrity')}
+                        checked={form.checkIntegrity}
+                        onChange={(e, v, checked) => handleChange('checkIntegrity', checked)}
+                    />
+                    <CheckboxItem
+                        id="vc-reindex"
+                        label={t('label.reindexDefaultWorkspace')}
+                        checked={form.reindexDefaultWorkspace}
+                        onChange={(e, v, checked) => handleChange('reindexDefaultWorkspace', checked)}
+                    />
+                    <CheckboxItem
+                        id="vc-force-restart"
+                        label={t('label.forceRestartFromBeginning')}
+                        checked={form.forceRestartFromBeginning}
+                        onChange={(e, v, checked) => handleChange('forceRestartFromBeginning', checked)}
+                    />
                 </div>
             </div>
 

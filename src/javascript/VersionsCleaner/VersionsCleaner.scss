@@ -130,3 +130,23 @@
 .vc_actions {
   margin-top: var(--spacing-medium, 16px);
 }
+
+.vc_divider {
+  border: none;
+  border-top: 1px solid var(--color-gray_light, #dadada);
+  margin: var(--spacing-large, 24px) 0;
+}
+
+.vc_section {
+  // no additional padding needed — inherits from vc_container
+}
+
+.vc_sectionHeader {
+  margin-bottom: var(--spacing-medium, 16px);
+}
+
+.vc_sectionHint {
+  display: block;
+  margin-top: var(--spacing-nano, 4px);
+  color: var(--color-gray, #7a7f88);
+}

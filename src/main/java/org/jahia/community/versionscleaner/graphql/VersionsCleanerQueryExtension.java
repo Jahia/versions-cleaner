@@ -5,8 +5,10 @@ import graphql.annotations.annotationTypes.GraphQLField;
 import graphql.annotations.annotationTypes.GraphQLName;
 import graphql.annotations.annotationTypes.GraphQLTypeExtension;
 import org.jahia.community.versionscleaner.CleanCommand;
+import org.jahia.community.versionscleaner.VersionsCleanerConfig;
 import org.jahia.modules.graphql.provider.dxm.DXGraphQLProvider;
 import org.jahia.modules.graphql.provider.dxm.security.GraphQLRequiresPermission;
+import org.jahia.osgi.BundleUtils;
 
 @GraphQLTypeExtension(DXGraphQLProvider.Query.class)
 @GraphQLName("VersionsCleanerQueries")
@@ -22,5 +24,111 @@ public class VersionsCleanerQueryExtension {
     @GraphQLRequiresPermission("admin")
     public static Boolean isRunning() {
         return CleanCommand.isRunning();
+    }
+
+    @GraphQLField
+    @GraphQLName("versionsCleanerConfig")
+    @GraphQLDescription("Returns the current versions cleaner scheduled job configuration")
+    @GraphQLRequiresPermission("admin")
+    public static GqlVersionsCleanerConfig config() {
+        final VersionsCleanerConfig config = BundleUtils.getOsgiService(VersionsCleanerConfig.class, null);
+        if (config == null) {
+            return GqlVersionsCleanerConfig.defaults();
+        }
+        return new GqlVersionsCleanerConfig(
+                config.isDisabled(),
+                config.getCronExpression(),
+                config.getNbVersionsToKeep(),
+                config.isDeleteOrphanedVersions(),
+                config.isCheckIntegrity(),
+                config.isReindexDefaultWorkspace(),
+                config.getMaxExecutionTimeInMs()
+        );
+    }
+
+    @GraphQLName("VersionsCleanerConfig")
+    @GraphQLDescription("Versions cleaner scheduled job configuration")
+    public static class GqlVersionsCleanerConfig {
+
+        private final boolean disabled;
+        private final String cronExpression;
+        private final long nbVersionsToKeep;
+        private final boolean deleteOrphanedVersions;
+        private final boolean checkIntegrity;
+        private final boolean reindexDefaultWorkspace;
+        private final long maxExecutionTimeInMs;
+
+        public GqlVersionsCleanerConfig(boolean disabled, String cronExpression, long nbVersionsToKeep,
+                boolean deleteOrphanedVersions, boolean checkIntegrity,
+                boolean reindexDefaultWorkspace, long maxExecutionTimeInMs) {
+            this.disabled = disabled;
+            this.cronExpression = cronExpression;
+            this.nbVersionsToKeep = nbVersionsToKeep;
+            this.deleteOrphanedVersions = deleteOrphanedVersions;
+            this.checkIntegrity = checkIntegrity;
+            this.reindexDefaultWorkspace = reindexDefaultWorkspace;
+            this.maxExecutionTimeInMs = maxExecutionTimeInMs;
+        }
+
+        public static GqlVersionsCleanerConfig defaults() {
+            return new GqlVersionsCleanerConfig(
+                    VersionsCleanerConfig.DEFAULT_DISABLED,
+                    VersionsCleanerConfig.DEFAULT_CRON_EXPRESSION,
+                    VersionsCleanerConfig.DEFAULT_NB_VERSIONS_TO_KEEP,
+                    VersionsCleanerConfig.DEFAULT_DELETE_ORPHANED_VERSIONS,
+                    VersionsCleanerConfig.DEFAULT_CHECK_INTEGRITY,
+                    VersionsCleanerConfig.DEFAULT_REINDEX_DEFAULT_WORKSPACE,
+                    VersionsCleanerConfig.DEFAULT_MAX_EXECUTION_TIME_IN_MS
+            );
+        }
+
+        @GraphQLField
+        @GraphQLName("disabled")
+        @GraphQLDescription("Whether the scheduled cleanup job is disabled")
+        public boolean isDisabled() {
+            return disabled;
+        }
+
+        @GraphQLField
+        @GraphQLName("cronExpression")
+        @GraphQLDescription("Quartz cron expression for the scheduled cleanup")
+        public String getCronExpression() {
+            return cronExpression;
+        }
+
+        @GraphQLField
+        @GraphQLName("nbVersionsToKeep")
+        @GraphQLDescription("Number of versions to retain per non-orphaned history (-1 = skip)")
+        public long getNbVersionsToKeep() {
+            return nbVersionsToKeep;
+        }
+
+        @GraphQLField
+        @GraphQLName("deleteOrphanedVersions")
+        @GraphQLDescription("Whether to delete orphaned version histories")
+        public boolean isDeleteOrphanedVersions() {
+            return deleteOrphanedVersions;
+        }
+
+        @GraphQLField
+        @GraphQLName("checkIntegrity")
+        @GraphQLDescription("Whether to check and fix JCR reference integrity")
+        public boolean isCheckIntegrity() {
+            return checkIntegrity;
+        }
+
+        @GraphQLField
+        @GraphQLName("reindexDefaultWorkspace")
+        @GraphQLDescription("Whether to reindex the default workspace before cleaning")
+        public boolean isReindexDefaultWorkspace() {
+            return reindexDefaultWorkspace;
+        }
+
+        @GraphQLField
+        @GraphQLName("maxExecutionTimeInMs")
+        @GraphQLDescription("Maximum execution time in milliseconds (0 = unlimited)")
+        public long getMaxExecutionTimeInMs() {
+            return maxExecutionTimeInMs;
+        }
     }
 }

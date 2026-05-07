@@ -11,13 +11,21 @@ import java.util.Dictionary;
         property = Constants.SERVICE_PID + "=org.jahia.community.versionscleaner")
 public class VersionsCleanerConfig implements ManagedService {
 
-    private boolean disabled = true;
-    private String cronExpression = "0 30 1 * * ?";
-    private boolean reindexDefaultWorkspace = false;
-    private boolean checkIntegrity = false;
-    private long nbVersionsToKeep = 2L;
-    private long maxExecutionTimeInMs = 60000L;
-    private boolean deleteOrphanedVersions = false;
+    public static final boolean DEFAULT_DISABLED = true;
+    public static final String DEFAULT_CRON_EXPRESSION = "0 30 1 * * ?";
+    public static final long DEFAULT_NB_VERSIONS_TO_KEEP = 2L;
+    public static final boolean DEFAULT_DELETE_ORPHANED_VERSIONS = false;
+    public static final boolean DEFAULT_CHECK_INTEGRITY = false;
+    public static final boolean DEFAULT_REINDEX_DEFAULT_WORKSPACE = false;
+    public static final long DEFAULT_MAX_EXECUTION_TIME_IN_MS = 60000L;
+
+    private boolean disabled = DEFAULT_DISABLED;
+    private String cronExpression = DEFAULT_CRON_EXPRESSION;
+    private boolean reindexDefaultWorkspace = DEFAULT_REINDEX_DEFAULT_WORKSPACE;
+    private boolean checkIntegrity = DEFAULT_CHECK_INTEGRITY;
+    private long nbVersionsToKeep = DEFAULT_NB_VERSIONS_TO_KEEP;
+    private long maxExecutionTimeInMs = DEFAULT_MAX_EXECUTION_TIME_IN_MS;
+    private boolean deleteOrphanedVersions = DEFAULT_DELETE_ORPHANED_VERSIONS;
 
     @Override
     public void updated(Dictionary<String, ?> props) throws ConfigurationException {

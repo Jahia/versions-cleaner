@@ -1,0 +1,11 @@
+- karafCommand: "log:log 'START - versions-cleaner provisioning'"
+
+- karafCommand: "log:log 'START - Install versions-cleaner dependencies'"
+- installBundle:
+      - 'mvn:org.jahia.modules/graphql-dxm-provider/LATEST'
+      - 'mvn:org.jahia.modules/serverSettings/LATEST'
+  autoStart: true
+  uninstallPreviousVersion: false
+- karafCommand: "log:log 'END - Install versions-cleaner dependencies'"
+
+- karafCommand: "log:log 'END - versions-cleaner provisioning'"

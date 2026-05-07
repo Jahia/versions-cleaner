@@ -1,0 +1,11 @@
+query {
+    versionsCleanerConfig {
+        disabled
+        cronExpression
+        nbVersionsToKeep
+        deleteOrphanedVersions
+        checkIntegrity
+        reindexDefaultWorkspace
+        maxExecutionTimeInMs
+    }
+}

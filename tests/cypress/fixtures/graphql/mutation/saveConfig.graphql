@@ -1,0 +1,19 @@
+mutation saveConfig(
+    $disabled: Boolean
+    $cronExpression: String
+    $nbVersionsToKeep: Long
+    $deleteOrphanedVersions: Boolean
+    $checkIntegrity: Boolean
+    $reindexDefaultWorkspace: Boolean
+    $maxExecutionTimeInMs: Long
+) {
+    versionsCleanerSaveConfig(
+        disabled: $disabled
+        cronExpression: $cronExpression
+        nbVersionsToKeep: $nbVersionsToKeep
+        deleteOrphanedVersions: $deleteOrphanedVersions
+        checkIntegrity: $checkIntegrity
+        reindexDefaultWorkspace: $reindexDefaultWorkspace
+        maxExecutionTimeInMs: $maxExecutionTimeInMs
+    )
+}

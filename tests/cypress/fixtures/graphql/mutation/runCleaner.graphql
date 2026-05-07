@@ -1,0 +1,21 @@
+mutation runCleaner(
+    $nbVersionsToKeep: Long
+    $deleteOrphanedVersions: Boolean
+    $checkIntegrity: Boolean
+    $reindexDefaultWorkspace: Boolean
+    $maxExecutionTimeInMs: Long
+    $pauseDuration: Long
+    $subtreePath: String
+    $forceRestartFromBeginning: Boolean
+) {
+    versionsCleanerRun(
+        nbVersionsToKeep: $nbVersionsToKeep
+        deleteOrphanedVersions: $deleteOrphanedVersions
+        checkIntegrity: $checkIntegrity
+        reindexDefaultWorkspace: $reindexDefaultWorkspace
+        maxExecutionTimeInMs: $maxExecutionTimeInMs
+        pauseDuration: $pauseDuration
+        subtreePath: $subtreePath
+        forceRestartFromBeginning: $forceRestartFromBeginning
+    )
+}

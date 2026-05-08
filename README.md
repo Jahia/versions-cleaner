@@ -44,19 +44,21 @@ maxExecutionTimeInMs=600000
 
 All operations require `admin` permission.
 
-### Query
+### Queries
 
 | Name | Returns | Description |
 |------|---------|-------------|
 | `versionsCleanerIsRunning` | `Boolean` | True if a clean is currently running |
+| `versionsCleanerConfig` | `VersionsCleanerConfig` | Returns the current scheduled job configuration |
 
-### Mutation
+### Mutations
 
 | Name | Returns | Description |
 |------|---------|-------------|
 | `versionsCleanerRun(...)` | `Boolean` | Starts a clean asynchronously; returns `false` if already running |
+| `versionsCleanerSaveConfig(...)` | `Boolean` | Persists the scheduled job configuration; module restart required for schedule changes |
 
-**Mutation parameters:**
+#### versionsCleanerRun parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -75,6 +77,34 @@ All operations require `admin` permission.
 mutation {
   versionsCleanerRun(
     nbVersionsToKeep: 2
+    deleteOrphanedVersions: true
+    maxExecutionTimeInMs: 600000
+  )
+}
+```
+
+#### versionsCleanerSaveConfig parameters
+
+All parameters are optional; only the provided values are updated.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `disabled` | `Boolean` | Whether the scheduled cleanup job is disabled |
+| `cronExpression` | `String` | Quartz cron expression for the scheduled cleanup |
+| `nbVersionsToKeep` | `Long` | Number of versions to retain per non-orphaned history (-1 = skip) |
+| `deleteOrphanedVersions` | `Boolean` | Whether to delete orphaned version histories |
+| `checkIntegrity` | `Boolean` | Whether to check and fix JCR reference integrity |
+| `reindexDefaultWorkspace` | `Boolean` | Whether to reindex the default workspace before cleaning |
+| `maxExecutionTimeInMs` | `Long` | Maximum execution time in milliseconds (0 = unlimited) |
+
+**Example:**
+
+```graphql
+mutation {
+  versionsCleanerSaveConfig(
+    disabled: false
+    cronExpression: "0 30 1 * * ?"
+    nbVersionsToKeep: 5
     deleteOrphanedVersions: true
     maxExecutionTimeInMs: 600000
   )

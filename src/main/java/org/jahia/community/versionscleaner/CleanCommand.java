@@ -74,6 +74,7 @@ public class CleanCommand implements Action {
     private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
     private static final String PAUSE_DURATION_MARKER = "versions-cleaner.pause.duration";
     private static final String STARTUP_DELAY_MARKER = "versions-cleaner.startup.delay";
+    private static final String FAILED_TO_REMOVE = "Failed to remove ";
 
     @Option(name = "-r", aliases = "--reindex-default-workspace", description = "Reindex default workspace before cleaning")
     private Boolean reindexDefaultWorkspace = Boolean.FALSE;
@@ -166,34 +167,7 @@ public class CleanCommand implements Action {
         context.setLiveSession(JCRSessionFactory.getInstance().getCurrentSystemSession(Constants.LIVE_WORKSPACE, null, null));
 
         if (context.isReindexDefaultWorkspace()) {
-            try {
-                final long start = System.currentTimeMillis();
-                logger.info("Starting reindexing of default workspace");
-                ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
-                final SchedulerService schedulerService = ServicesRegistry.getInstance().getSchedulerService();
-                boolean continueChecking = true;
-                while (continueChecking) {
-                    Thread.sleep(5000L);
-                    boolean reindexInProgress = false;
-                    final List<JobDetail> jobs = schedulerService.getAllRAMJobs();
-                    for (JobDetail job : jobs) {
-                        if (job.getName().startsWith("JahiaSearchIndex") && !"successful".equals(job.getJobDataMap().getString("status"))) {
-                            reindexInProgress = true;
-                            logger.info("Reindexing is still in progress");
-                        }
-                    }
-                    continueChecking = continueChecking && reindexInProgress;
-                }
-
-                if (logger.isInfoEnabled()) {
-                    logger.info(String.format("Finished reindexing default workspace in %s", toReadableDuration(start)));
-                }
-            } catch (SchedulerException ex) {
-                logger.error("Impossible to monitor reindexing job", ex);
-            } catch (InterruptedException ex) {
-                logger.error("Impossible to pause the thread", ex);
-                Thread.currentThread().interrupt();
-            }
+            performReindex();
         }
 
         if (needsToInterrupt(context)) {
@@ -207,7 +181,7 @@ public class CleanCommand implements Action {
             try (final Connection conn = DatabaseUtils.getDatasource().getConnection()) {
                 context.setDbConnection(conn);
                 processNode(node, context);
-                logger.info(String.format("Finished to scan the versions under %s in %s", node.getPath(), toReadableDuration(context.getStartTime())));
+                if (logger.isInfoEnabled()) logger.info("Finished to scan the versions under {} in {}", node.getPath(), toReadableDuration(context.getStartTime()));
                 printDeletionSummary(context);
                 if (!needsToInterrupt(context)) context.endOfTreeReached();
             } catch (SQLException e) {
@@ -216,15 +190,43 @@ public class CleanCommand implements Action {
         }
     }
 
+    private static void performReindex() {
+        try {
+            final long start = System.currentTimeMillis();
+            logger.info("Starting reindexing of default workspace");
+            ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
+            final SchedulerService schedulerService = ServicesRegistry.getInstance().getSchedulerService();
+            boolean continueChecking = true;
+            while (continueChecking) {
+                Thread.sleep(5000L);
+                boolean reindexInProgress = false;
+                final List<JobDetail> jobs = schedulerService.getAllRAMJobs();
+                for (JobDetail job : jobs) {
+                    if (job.getName().startsWith("JahiaSearchIndex") && !"successful".equals(job.getJobDataMap().getString("status"))) {
+                        reindexInProgress = true;
+                        logger.info("Reindexing is still in progress");
+                    }
+                }
+                continueChecking = reindexInProgress;
+            }
+            if (logger.isInfoEnabled()) logger.info("Finished reindexing default workspace in {}", toReadableDuration(start));
+        } catch (SchedulerException ex) {
+            logger.error("Impossible to monitor reindexing job", ex);
+        } catch (InterruptedException ex) {
+            logger.error("Impossible to pause the thread", ex);
+            Thread.currentThread().interrupt();
+        } catch (RepositoryException ex) {
+            logger.error("Failed to schedule reindexing", ex);
+        }
+    }
+
     private static void processNode(JCRNodeWrapper node, CleanerContext context) throws RepositoryException {
         if (needsToInterrupt(context)) return;
 
         final String path = node.getPath();
-        if (CollectionUtils.isNotEmpty(context.getSkippedPaths())) {
-            if (context.getSkippedPaths().contains(path)) {
-                logger.info("Skipping {}", path);
-                return;
-            }
+        if (CollectionUtils.isNotEmpty(context.getSkippedPaths()) && context.getSkippedPaths().contains(path)) {
+            logger.info("Skipping {}", path);
+            return;
         }
 
         if (node.isNodeType(Constants.NT_VERSIONHISTORY)) {
@@ -254,20 +256,28 @@ public class CleanCommand implements Action {
                 final JCRNodeWrapper frozen = node.getNode(JcrConstants.JCR_FROZENNODE);
                 if (frozen.hasProperty(JcrConstants.JCR_FROZENUUID)) {
                     final String uuid = frozen.getPropertyAsString(JcrConstants.JCR_FROZENUUID);
-                    try {
-                        context.getEditSession().getNodeByIdentifier(uuid);
-                    } catch (ItemNotFoundException ex) {
-                        try {
-                            context.getLiveSession().getNodeByIdentifier(uuid);
-                        } catch (ItemNotFoundException ex2) {
-                            return true;
-                        }
+                    if (isUuidOrphaned(uuid, context)) {
+                        return true;
                     }
                     return false;
                 }
             }
         }
         return false;
+    }
+
+    private static boolean isUuidOrphaned(String uuid, CleanerContext context) throws RepositoryException {
+        try {
+            context.getEditSession().getNodeByIdentifier(uuid);
+            return false;
+        } catch (ItemNotFoundException ex) {
+            try {
+                context.getLiveSession().getNodeByIdentifier(uuid);
+                return false;
+            } catch (ItemNotFoundException ex2) {
+                return true;
+            }
+        }
     }
 
     private static void deleteOrphanedHistory(VersionHistory vh, CleanerContext context) throws RepositoryException {
@@ -287,7 +297,7 @@ public class CleanCommand implements Action {
 
             final long remainingVersions = nbVersions - deletedVersions;
             if (remainingVersions > context.getThresholdLongHistoryPurgeStrategy()) {
-                logger.debug(String.format("Finished processing %s , deleted %s versions, %s versions remaining", vhPath, deletedVersions, remainingVersions));
+                logger.debug("Finished processing {} , deleted {} versions, {} versions remaining", vhPath, deletedVersions, remainingVersions);
                 return;
             } else {
                 logger.debug("Finished processing {} , deleted {} versions, handling it from now on as any other orphaned version history", vhPath, deletedVersions);
@@ -308,7 +318,7 @@ public class CleanCommand implements Action {
             results = ((InternalXAVersionManager) vm).purgeVersions(providerSession, unusedVersions);
         }
         if (results[0] + results[1] > 0) {
-            // Here we assume that either the whole version history is deleted, or nothing. TODO To be checked if a few versions can be deleted, and what would be the results values in such case
+            // Assumption: purgeVersions either deletes the whole history or nothing (results[0]+results[1] > 0 means success)
             context.trackDeletedVersions(nbVersions, true);
             context.trackDeletedVersionHistory(true);
         }
@@ -322,13 +332,14 @@ public class CleanCommand implements Action {
         final List<String> versionNames = new ArrayList<>();
         while (!needsToInterrupt(context) && versionIterator.hasNext()) {
             final Node version = (Node) versionIterator.next();
-            if (!version.isNodeType(JcrConstants.NT_VERSION)) continue;
-            final String versionName = version.getName();
-            if (JcrConstants.JCR_ROOTVERSION.equals(versionName)) {
-                logger.debug("Skipping {} as it is the root version", toPrintableName(versionName));
-                continue;
+            if (version.isNodeType(JcrConstants.NT_VERSION)) {
+                final String versionName = version.getName();
+                if (JcrConstants.JCR_ROOTVERSION.equals(versionName)) {
+                    if (logger.isDebugEnabled()) logger.debug("Skipping {} as it is the root version", toPrintableName(versionName));
+                } else {
+                    versionNames.add(versionName);
+                }
             }
-            versionNames.add(versionName);
         }
         return versionNames;
     }
@@ -357,7 +368,7 @@ public class CleanCommand implements Action {
         try {
             path = vh.getPath();
         } catch (RepositoryException e) {
-            logger.error("", e);
+            logger.error("Failed to get version history path", e);
             path = "<failed to calculate the path>";
         }
         logger.debug("Non orphan version history to reduce: {}", path);
@@ -368,9 +379,8 @@ public class CleanCommand implements Action {
             // Do clean if we have more versions than the desired number + 1 for the root version
             if (nbVersions > context.getNbVersionsToKeep() + 1) {
                 final List<String> versionNames = getNonRootVersionNames(versionIterator, context);
-                for (int i = 0; i < context.getNbVersionsToKeep(); i++) {
-                    versionNames.remove(versionNames.size() - 1);
-                }
+                final int nbToKeep = (int) context.getNbVersionsToKeep();
+                versionNames.subList(versionNames.size() - nbToKeep, versionNames.size()).clear();
                 final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
                 context.trackDeletedVersions(deletedVersions, false);
             }
@@ -388,72 +398,80 @@ public class CleanCommand implements Action {
         do {
             nbLoops++;
             nbVersionPurgedInCurrentLoop = 0;
-
             for (String versionName : versionNames) {
-                final StopWatch stopWatch = new StopWatch();
-                stopWatch.start("Load the version");
-                final Version version;
-                try {
-                    version = vh.getVersion(versionName);
-                } catch (RepositoryException e) {
-                    logger.error("Failed to remove " + versionName, e);
-                    skippedVersionNames.add(versionName);
-                    continue;
+                if (removeOneVersion(vh, versionName, skippedVersionNames, context, nbLoops, deletedVersions)) {
+                    nbVersionPurgedInCurrentLoop++;
+                    deletedVersions++;
                 }
-                stopWatch.stop();
-                stopWatch.start("Calculate the number of references");
-                final long nbReferences;
-                try {
-                    nbReferences = version.getReferences().getSize();
-                } catch (RepositoryException e) {
-                    logger.error("Failed to remove " + versionName, e);
-                    skippedVersionNames.add(versionName);
-                    continue;
-                }
-                stopWatch.stop();
-                if (nbReferences > 0) {
-                    logger.debug("Skipping {} as it is referenced", toPrintableName(versionName));
-                    skippedVersionNames.add(versionName);
-                } else {
-                    stopWatch.start("Version remove");
-                    try {
-                        vh.removeVersion(versionName);
-                        nbVersionPurgedInCurrentLoop++;
-                        deletedVersions++;
-                        logger.debug(String.format("Removed a version (deleted %s versions, deleted=%s / skipped=%s in loop %s): %s", deletedVersions, nbVersionPurgedInCurrentLoop, skippedVersionNames.size(), nbLoops, toPrintableName(versionName)));
-                    } catch (RepositoryException | RuntimeException e) {
-                        logger.error("Failed to remove " + versionName, e);
-                        skippedVersionNames.add(versionName);
-                    }
-                    stopWatch.stop();
-                }
-                final long sleepDuration = getSleepDuration(context);
-                if (sleepDuration > 0) {
-                    stopWatch.start("Pause");
-                    try {
-                        Thread.sleep(sleepDuration);
-                    } catch (InterruptedException e) {
-                        logger.error("", e);
-                    }
-                    stopWatch.stop();
-                }
-                if (logger.isDebugEnabled()) logger.debug(stopWatch.prettyPrint());
                 if (needsToInterrupt(context)) break;
             }
             versionNames.clear();
             versionNames.addAll(skippedVersionNames);
             skippedVersionNames.clear();
         } while (!needsToInterrupt(context) && nbVersionPurgedInCurrentLoop > 0 && !versionNames.isEmpty());
-        
+
         if (deletedVersions < names.size()) {
             try {
-                logger.warn(String.format("Skipped %s versions on %s", names.size() - deletedVersions, vh.getPath()));
+                logger.warn("Skipped {} versions on {}", names.size() - deletedVersions, vh.getPath());
             } catch (RepositoryException e) {
-                logger.error("", e);
+                logger.warn("Skipped some versions (path unavailable)", e);
             }
         }
-
         return deletedVersions;
+    }
+
+    private static boolean removeOneVersion(VersionHistory vh, String versionName,
+            List<String> skippedVersionNames, CleanerContext context, int nbLoops, long totalDeleted) {
+        long nbReferences = -1;
+        boolean canProcess = false;
+        final StopWatch stopWatch = new StopWatch();
+        stopWatch.start("Load and count references");
+        try {
+            final Version version = vh.getVersion(versionName);
+            nbReferences = version.getReferences().getSize();
+            canProcess = true;
+        } catch (RepositoryException e) {
+            logger.error(FAILED_TO_REMOVE, versionName, e);
+            skippedVersionNames.add(versionName);
+        }
+        stopWatch.stop();
+        if (!canProcess) {
+            return false;
+        }
+        if (nbReferences > 0) {
+            if (logger.isDebugEnabled()) logger.debug("Skipping {} as it is referenced", toPrintableName(versionName));
+            skippedVersionNames.add(versionName);
+            return false;
+        }
+        stopWatch.start("Version remove");
+        boolean deleted = false;
+        try {
+            vh.removeVersion(versionName);
+            deleted = true;
+            if (logger.isDebugEnabled()) logger.debug("Removed a version (deleted {} versions, deleted={} / skipped={} in loop {}): {}",
+                    totalDeleted + 1, 1, skippedVersionNames.size(), nbLoops, toPrintableName(versionName));
+        } catch (RepositoryException | RuntimeException e) {
+            logger.error(FAILED_TO_REMOVE, versionName, e);
+            skippedVersionNames.add(versionName);
+        }
+        stopWatch.stop();
+        pauseBetweenDeletions(context, stopWatch);
+        if (logger.isDebugEnabled()) logger.debug(stopWatch.prettyPrint());
+        return deleted;
+    }
+
+    private static void pauseBetweenDeletions(CleanerContext context, StopWatch stopWatch) {
+        final long sleepDuration = getSleepDuration(context);
+        if (sleepDuration > 0) {
+            stopWatch.start("Pause");
+            try {
+                Thread.sleep(sleepDuration);
+            } catch (InterruptedException e) {
+                logger.error("Thread interrupted during pause between version deletions", e);
+                Thread.currentThread().interrupt();
+            }
+            stopWatch.stop();
+        }
     }
 
     private static long getSleepDuration(CleanerContext context) {
@@ -493,82 +511,92 @@ public class CleanCommand implements Action {
             if (fix || referencesCheck) {
                 PropertyIterator propertyIterator = node.getProperties();
                 while (propertyIterator.hasNext()) {
-                    Property property = propertyIterator.nextProperty();
-                    if (property.isMultiple()) {
-                        try {
-                            Value[] values = property.getValues();
-                            for (Value value : values) {
-                                if (!processPropertyValue(session, node, property, value, fix, referencesCheck, context)) {
-                                    return;
-                                }
-                            }
-                        } catch (ConstraintViolationException ex) {
-                            //Definition was changed, property is missing
-                            logger.warn(String.format("Warning: Property definition for node %s is missing", node.getPath()), ex);
-                        }
-                    } else {
-                        if (!processPropertyValue(session, node, property, property.getValue(), fix, referencesCheck, context)) {
-                            return;
-                        }
+                    if (!processProperty(session, node, propertyIterator.nextProperty(), fix, referencesCheck, context)) {
+                        return;
                     }
                 }
             }
-
         } catch (RepositoryException ex) {
-            logger.warn(String.format("Exception while processing node %s", node.getPath()), ex);
+            logger.warn("Exception while processing node {}", node.getPath(), ex);
         }
+    }
+
+    private static boolean processProperty(Session session, Node node, Property property,
+                                            boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
+        if (property.isMultiple()) {
+            return processMultipleValueProperty(session, node, property, fix, referencesCheck, context);
+        }
+        return processPropertyValue(session, node, property, property.getValue(), fix, referencesCheck, context);
+    }
+
+    private static boolean processMultipleValueProperty(Session session, Node node, Property property,
+                                                         boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
+        try {
+            Value[] values = property.getValues();
+            for (Value value : values) {
+                if (!processPropertyValue(session, node, property, value, fix, referencesCheck, context)) {
+                    return false;
+                }
+            }
+        } catch (ConstraintViolationException ex) {
+            logger.warn("Property definition for node {} is missing", node.getPath(), ex);
+        }
+        return true;
     }
 
     private static boolean processPropertyValue(Session session, Node node, Property property, Value propertyValue,
                                                 boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
         int propertyType = propertyValue.getType();
-        switch (propertyType) {
-            case PropertyType.REFERENCE:
-            case PropertyType.WEAKREFERENCE:
-                if (!referencesCheck) {
-                    break;
-                }
-                String uuid = propertyValue.getString();
-                try {
-                    session.getNodeByIdentifier(uuid);
-                } catch (ItemNotFoundException infe) {
-                    PreparedStatement statement = null;
-                    ResultSet resultSet = null;
-                    try {
-                        statement = context.getDbConnection().prepareStatement("select * from jahia_external_mapping where internalUuid=?");
-                        statement.setString(1, uuid);
-                        resultSet = statement.executeQuery();
-                        if (resultSet.next()) {
-                            logger.info(String.format("Mapping found towards %s, this reference is not available at this time (referenced from property %s), please check your mount points and/or external providers", resultSet.getString("externalId"), property.getPath()));
-                            if (fix) {
-                                logger.info("It will not be fixed automatically");
-                            }
-                            break;
-                        }
-                    } catch (SQLException ex) {
-                        //uuid is not an external reference
-                    } finally {
-                        DatabaseUtils.closeQuietly(resultSet);
-                        DatabaseUtils.closeQuietly(statement);
-                    }
-                    logger.info(String.format("Couldn't find referenced node with UUID %s referenced from property %s", uuid, property.getPath()));
-                    if (fix) {
-                        if (mustRemoveParentNode(node)) {
-                            fixInvalidNodeReference(node);
-                            return false;
-                        } else {
-                            fixInvalidPropertyReference(node, property, uuid);
-                        }
-                    }
-                }
-                break;
-            default:
+        if ((propertyType == PropertyType.REFERENCE || propertyType == PropertyType.WEAKREFERENCE) && referencesCheck) {
+            return processReferenceProperty(session, node, property, propertyValue.getString(), fix, context);
         }
         return true;
     }
 
+    private static boolean processReferenceProperty(Session session, Node node, Property property,
+                                                     String uuid, boolean fix, CleanerContext context) throws RepositoryException {
+        try {
+            session.getNodeByIdentifier(uuid);
+        } catch (ItemNotFoundException infe) {
+            if (isExternalMapping(uuid, context)) {
+                logger.info("Mapping found towards an external provider for UUID {} (referenced from property {}), please check mount points", uuid, property.getPath());
+                if (fix) {
+                    logger.info("It will not be fixed automatically");
+                }
+                return true;
+            }
+            logger.info("Couldn't find referenced node with UUID {} referenced from property {}", uuid, property.getPath());
+            if (fix) {
+                if (mustRemoveParentNode(node)) {
+                    fixInvalidNodeReference(node);
+                    return false;
+                } else {
+                    fixInvalidPropertyReference(node, property, uuid);
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean isExternalMapping(String uuid, CleanerContext context) {
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+        try {
+            statement = context.getDbConnection().prepareStatement(
+                    "select externalId from jahia_external_mapping where internalUuid=?");
+            statement.setString(1, uuid);
+            resultSet = statement.executeQuery();
+            return resultSet.next();
+        } catch (SQLException ex) {
+            return false;
+        } finally {
+            DatabaseUtils.closeQuietly(resultSet);
+            DatabaseUtils.closeQuietly(statement);
+        }
+    }
+
     private static void fixInvalidPropertyReference(Node node, Property property, String uuid) throws RepositoryException {
-        logger.info(String.format("Fixing invalid reference by setting reference property %s to null...", property.getPath()));
+        logger.info("Fixing invalid reference by setting reference property {} to null...", property.getPath());
         Calendar originalLastModificationDate;
         try {
             originalLastModificationDate = node.getProperty(Constants.JCR_LASTMODIFIED).getDate();
@@ -597,18 +625,14 @@ public class CleanCommand implements Action {
         } catch (PathNotFoundException pnfe) {
             newLastModificationDate = null;
         }
-        if (newLastModificationDate == null && originalLastModificationDate == null) {
-            // do nothing, they are equal
-        } else if (((newLastModificationDate != null) && (originalLastModificationDate == null))
-                || ((newLastModificationDate == null) && (originalLastModificationDate != null))
-                || (!newLastModificationDate.equals(originalLastModificationDate))) {
+        if (!java.util.Objects.equals(newLastModificationDate, originalLastModificationDate)) {
             node.setProperty(Constants.JCR_LASTMODIFIED, originalLastModificationDate);
             nodeSession.save();
         }
     }
 
     private static void fixInvalidNodeReference(Node node) throws RepositoryException {
-        logger.info(String.format("Fixing invalid reference by removing node %s from repository...", node.getPath()));
+        logger.info("Fixing invalid reference by removing node {} from repository...", node.getPath());
         Node parentNode = node.getParent();
         Calendar originalLastModificationDate;
         try {
@@ -630,11 +654,7 @@ public class CleanCommand implements Action {
         } catch (PathNotFoundException pnfe) {
             newLastModificationDate = null;
         }
-        if (newLastModificationDate == null && originalLastModificationDate == null) {
-            // do nothing, they are equal
-        } else if (((newLastModificationDate != null) && (originalLastModificationDate == null))
-                || ((newLastModificationDate == null) && (originalLastModificationDate != null))
-                || (!newLastModificationDate.equals(originalLastModificationDate))) {
+        if (!java.util.Objects.equals(newLastModificationDate, originalLastModificationDate)) {
             parentNode.setProperty(Constants.JCR_LASTMODIFIED, originalLastModificationDate);
             nodeSession.save();
         }
@@ -680,15 +700,15 @@ public class CleanCommand implements Action {
 
     private static void printDeletionSummary(CleanerContext context) {
         if (context.isDeleteOrphanedVersions() && context.deleteNonOrphanVersions()) {
-            logger.info(String.format("Deleted: [valid version histories=%s / valid versions=%s] [orphan version histories=%s / orphan versions=%s]",
+            logger.info("Deleted: [valid version histories={} / valid versions={}] [orphan version histories={} / orphan versions={}]",
                     context.getDeletedVersionHistoriesCount(), context.getDeletedVersionsCount(),
-                    context.getDeletedOrphanVersionHistoriesCount(), context.getDeletedOrphanVersionsCount()));
+                    context.getDeletedOrphanVersionHistoriesCount(), context.getDeletedOrphanVersionsCount());
         } else if (context.deleteNonOrphanVersions()) {
-            logger.info(String.format("Deleted: [valid version histories=%s / valid versions=%s]",
-                    context.getDeletedVersionHistoriesCount(), context.getDeletedVersionsCount()));
+            logger.info("Deleted: [valid version histories={} / valid versions={}]",
+                    context.getDeletedVersionHistoriesCount(), context.getDeletedVersionsCount());
         } else if (context.isDeleteOrphanedVersions()) {
-            logger.info(String.format("Deleted: [orphan version histories=%s / orphan versions=%s]",
-                    context.getDeletedOrphanVersionHistoriesCount(), context.getDeletedOrphanVersionsCount()));
+            logger.info("Deleted: [orphan version histories={} / orphan versions={}]",
+                    context.getDeletedOrphanVersionHistoriesCount(), context.getDeletedOrphanVersionsCount());
         }
     }
 

@@ -12,7 +12,6 @@ import org.jahia.modules.graphql.provider.dxm.security.GraphQLRequiresPermission
 import org.jahia.osgi.BundleUtils;
 import org.jahia.services.content.JCRSessionFactory;
 
-import javax.jcr.ItemNotFoundException;
 import javax.jcr.RepositoryException;
 import javax.jcr.version.VersionHistory;
 
@@ -57,8 +56,6 @@ public class VersionsCleanerQueryExtension {
                     .getCurrentSystemSession(Constants.EDIT_WORKSPACE, null, null)
                     .getNodeByIdentifier(historyId);
             return Boolean.TRUE;
-        } catch (ItemNotFoundException e) {
-            return Boolean.FALSE;
         } catch (RepositoryException e) {
             return Boolean.FALSE;
         }

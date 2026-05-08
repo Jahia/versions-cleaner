@@ -33,7 +33,7 @@ public class VersionsCleanerScheduler {
     }
 
     @Activate
-    public void start() throws Exception {
+    public void start() throws org.quartz.SchedulerException, java.text.ParseException {
         if (config.isDisabled()) {
             logger.info("Versions Cleaner scheduled job is disabled");
             return;
@@ -60,7 +60,7 @@ public class VersionsCleanerScheduler {
     }
 
     @Deactivate
-    public void stop() throws Exception {
+    public void stop() throws org.quartz.SchedulerException {
         if (jobDetail == null) {
             return;
         }

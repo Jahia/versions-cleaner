@@ -38,6 +38,7 @@ public class VersionsCleanerMutationExtension {
     @GraphQLName("versionsCleanerRun")
     @GraphQLDescription("Triggers a versions clean operation asynchronously. Returns false if a clean is already running.")
     @GraphQLRequiresPermission("admin")
+    @SuppressWarnings("java:S107")
     public static Boolean run(
             @GraphQLName("nbVersionsToKeep")
             @GraphQLDescription("Number of versions to keep per history. Negative = skip non-orphan histories.")

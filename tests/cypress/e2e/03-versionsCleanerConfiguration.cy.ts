@@ -66,7 +66,7 @@ describe('Versions Cleaner - Configuration UI', () => {
     it('shows the Enable scheduled job toggle', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('[role="switch"]').should('exist');
+        cy.get('#vc-cfg-scheduler-enabled').should('exist');
     });
 
     it('shows the Cron expression field', () => {

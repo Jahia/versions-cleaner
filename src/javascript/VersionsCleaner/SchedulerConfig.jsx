@@ -90,11 +90,13 @@ export const SchedulerConfig = () => {
                         {t('label.scheduler.enabled')}
                         <Tooltip label={t('label.scheduler.enabledTooltip')}><span className={styles.vc_tooltip}>ⓘ</span></Tooltip>
                     </label>
-                    <Switch
-                        checked={!form.disabled}
-                        isDisabled={loading}
-                        onChange={(e, v, checked) => handleChange('disabled', !checked)}
-                    />
+                    <div id="vc-cfg-scheduler-enabled">
+                        <Switch
+                            checked={!form.disabled}
+                            isDisabled={loading}
+                            onChange={(e, v, checked) => handleChange('disabled', !checked)}
+                        />
+                    </div>
                 </div>
 
                 <div className={styles.vc_fieldGroup}>

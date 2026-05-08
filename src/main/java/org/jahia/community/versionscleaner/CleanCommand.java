@@ -256,10 +256,7 @@ public class CleanCommand implements Action {
                 final JCRNodeWrapper frozen = node.getNode(JcrConstants.JCR_FROZENNODE);
                 if (frozen.hasProperty(JcrConstants.JCR_FROZENUUID)) {
                     final String uuid = frozen.getPropertyAsString(JcrConstants.JCR_FROZENUUID);
-                    if (isUuidOrphaned(uuid, context)) {
-                        return true;
-                    }
-                    return false;
+                    return isUuidOrphaned(uuid, context);
                 }
             }
         }

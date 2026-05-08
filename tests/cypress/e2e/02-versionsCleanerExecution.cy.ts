@@ -5,6 +5,8 @@ describe('Versions Cleaner - Execution UI', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const isRunning: DocumentNode = require('graphql-tag/loader!../fixtures/graphql/query/isRunning.graphql');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const setStartupDelay: DocumentNode = require('graphql-tag/loader!../fixtures/graphql/mutation/setStartupDelay.graphql');
 
     before(() => {
         cy.login();
@@ -102,13 +104,18 @@ describe('Versions Cleaner - Execution UI', () => {
 
     it('disables the Run button while clean is in progress', () => {
         cy.login();
-        cy.visit(adminPath);
         cy.waitUntil(
             () => cy.apollo({query: isRunning}).its('data.versionsCleanerIsRunning').then(v => v === false),
             {timeout: 30000, interval: 1000}
         );
+        // Arm a 5-second startup delay so the job stays running long enough to assert the UI state,
+        // even on an empty repository where there are no versions to delete.
+        cy.apollo({mutation: setStartupDelay, variables: {delayMs: 5000}});
+        cy.visit(adminPath);
         cy.contains('button', 'Run cleaner').click();
         // Button label changes and becomes disabled while running
         cy.contains('button', 'Clean in progress').should('be.disabled');
+        // Clear the delay after the test so subsequent runs are not affected.
+        cy.apollo({mutation: setStartupDelay, variables: {delayMs: 0}});
     });
 });

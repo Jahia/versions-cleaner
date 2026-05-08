@@ -1,0 +1,3 @@
+mutation setStartupDelay($delayMs: Long) {
+    versionsCleanerSetStartupDelay(delayMs: $delayMs)
+}

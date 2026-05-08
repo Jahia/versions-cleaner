@@ -92,6 +92,18 @@ public class VersionsCleanerMutationExtension {
     }
 
     @GraphQLField
+    @GraphQLName("versionsCleanerSetStartupDelay")
+    @GraphQLDescription("Sets a one-shot startup delay (ms) applied before the next async run. Pass 0 to clear. Intended for automated tests only.")
+    @GraphQLRequiresPermission("admin")
+    public static Boolean setStartupDelay(
+            @GraphQLName("delayMs")
+            @GraphQLDescription("Delay in milliseconds (0 = clear)")
+            Long delayMs) {
+        CleanCommand.setStartupDelay(delayMs != null ? delayMs : 0L);
+        return Boolean.TRUE;
+    }
+
+    @GraphQLField
     @GraphQLName("versionsCleanerSaveConfig")
     @GraphQLDescription("Saves the versions cleaner scheduled job configuration. A module restart is required for schedule changes to take effect.")
     @GraphQLRequiresPermission("admin")

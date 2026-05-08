@@ -73,6 +73,7 @@ public class CleanCommand implements Action {
     };
     private static final String INTERRUPT_MARKER = "versions-cleaner.interrupt";
     private static final String PAUSE_DURATION_MARKER = "versions-cleaner.pause.duration";
+    private static final String STARTUP_DELAY_MARKER = "versions-cleaner.startup.delay";
 
     @Option(name = "-r", aliases = "--reindex-default-workspace", description = "Reindex default workspace before cleaning")
     private Boolean reindexDefaultWorkspace = Boolean.FALSE;
@@ -128,6 +129,7 @@ public class CleanCommand implements Action {
                 RUNNING.set(true);
                 try {
                     Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+                    applyStartupDelay();
                     context.startProcess();
                     deleteVersions(context);
                 } catch (RepositoryException e) {
@@ -459,6 +461,27 @@ public class CleanCommand implements Action {
             return Long.parseLong(System.getProperty(PAUSE_DURATION_MARKER));
         } catch (NumberFormatException ignored) {
             return context.getPauseDuration();
+        }
+    }
+
+    private static void applyStartupDelay() {
+        try {
+            final long delay = Long.parseLong(System.getProperty(STARTUP_DELAY_MARKER, "0"));
+            if (delay > 0) {
+                Thread.sleep(delay);
+            }
+        } catch (NumberFormatException ignored) {
+            // property not set or invalid — no delay
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public static void setStartupDelay(long delayMs) {
+        if (delayMs > 0) {
+            System.setProperty(STARTUP_DELAY_MARKER, String.valueOf(delayMs));
+        } else {
+            System.clearProperty(STARTUP_DELAY_MARKER);
         }
     }
 

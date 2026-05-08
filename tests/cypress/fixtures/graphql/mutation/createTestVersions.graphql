@@ -1,0 +1,3 @@
+mutation createTestVersions($name: String, $versionCount: Int) {
+    versionsCleanerCreateTestVersions(name: $name, versionCount: $versionCount)
+}

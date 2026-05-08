@@ -1,0 +1,3 @@
+mutation deleteTestNode($name: String) {
+    versionsCleanerDeleteTestNode(name: $name)
+}

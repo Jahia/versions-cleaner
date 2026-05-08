@@ -1,0 +1,3 @@
+query getVersionCount($nodePath: String) {
+    versionsCleanerVersionCount(nodePath: $nodePath)
+}

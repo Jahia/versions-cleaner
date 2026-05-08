@@ -4,17 +4,22 @@ import graphql.annotations.annotationTypes.GraphQLDescription;
 import graphql.annotations.annotationTypes.GraphQLField;
 import graphql.annotations.annotationTypes.GraphQLName;
 import graphql.annotations.annotationTypes.GraphQLTypeExtension;
+import org.jahia.api.Constants;
 import org.jahia.community.versionscleaner.CleanCommand;
 import org.jahia.community.versionscleaner.CleanerContext;
 import org.jahia.modules.graphql.provider.dxm.DXGraphQLProvider;
 import org.jahia.modules.graphql.provider.dxm.security.GraphQLRequiresPermission;
 import org.jahia.osgi.BundleUtils;
+import org.jahia.services.content.JCRNodeWrapper;
+import org.jahia.services.content.JCRSessionFactory;
+import org.jahia.services.content.JCRSessionWrapper;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jcr.RepositoryException;
+import javax.jcr.version.VersionManager;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
@@ -87,6 +92,94 @@ public class VersionsCleanerMutationExtension {
             return Boolean.TRUE;
         } catch (RepositoryException e) {
             LOGGER.error("Failed to start versions cleaner", e);
+            return Boolean.FALSE;
+        }
+    }
+
+    private static final String TEST_NODE_PARENT = "/sites/systemsite/contents";
+    private static final String TEST_NODE_PREFIX = "vc-test-";
+
+    @GraphQLField
+    @GraphQLName("versionsCleanerCreateTestVersions")
+    @GraphQLDescription("Test helper: creates a versionable node and checks it in the given number of times. Returns the version history UUID, or null on error.")
+    @GraphQLRequiresPermission("admin")
+    public static String createTestVersions(
+            @GraphQLName("name")
+            @GraphQLDescription("Suffix appended to the test node name")
+            String name,
+
+            @GraphQLName("versionCount")
+            @GraphQLDescription("Number of non-root versions to create")
+            Integer versionCount) {
+
+        try {
+            final JCRSessionWrapper session = JCRSessionFactory.getInstance()
+                    .getCurrentSystemSession(Constants.EDIT_WORKSPACE, null, null);
+            final String nodeName = TEST_NODE_PREFIX + name;
+            final JCRNodeWrapper parent = session.getNode(TEST_NODE_PARENT);
+
+            if (parent.hasNode(nodeName)) {
+                final JCRNodeWrapper existing = parent.getNode(nodeName);
+                final VersionManager vm = session.getWorkspace().getVersionManager();
+                final String existingPath = existing.getPath();
+                if (!vm.isCheckedOut(existingPath)) {
+                    vm.checkout(existingPath);
+                }
+                existing.remove();
+                session.save();
+            }
+
+            final JCRNodeWrapper testNode = parent.addNode(nodeName, "jnt:contentList");
+            session.save();
+
+            final VersionManager vm = session.getWorkspace().getVersionManager();
+            final String nodePath = testNode.getPath();
+            final int count = versionCount != null ? versionCount : 1;
+
+            for (int i = 0; i < count; i++) {
+                if (i > 0) {
+                    vm.checkout(nodePath);
+                    testNode.setProperty("jcr:title", "Version " + i);
+                    session.save();
+                }
+                vm.checkin(nodePath);
+            }
+
+            return vm.getVersionHistory(nodePath).getIdentifier();
+        } catch (RepositoryException e) {
+            LOGGER.error("Failed to create test versions", e);
+            return null;
+        }
+    }
+
+    @GraphQLField
+    @GraphQLName("versionsCleanerDeleteTestNode")
+    @GraphQLDescription("Test helper: removes the test node created by versionsCleanerCreateTestVersions.")
+    @GraphQLRequiresPermission("admin")
+    public static Boolean deleteTestNode(
+            @GraphQLName("name")
+            @GraphQLDescription("Same suffix used when creating the node")
+            String name) {
+
+        try {
+            final JCRSessionWrapper session = JCRSessionFactory.getInstance()
+                    .getCurrentSystemSession(Constants.EDIT_WORKSPACE, null, null);
+            final String nodeName = TEST_NODE_PREFIX + name;
+            final JCRNodeWrapper parent = session.getNode(TEST_NODE_PARENT);
+            if (!parent.hasNode(nodeName)) {
+                return Boolean.TRUE;
+            }
+            final JCRNodeWrapper node = parent.getNode(nodeName);
+            final VersionManager vm = session.getWorkspace().getVersionManager();
+            final String nodePath = node.getPath();
+            if (!vm.isCheckedOut(nodePath)) {
+                vm.checkout(nodePath);
+            }
+            node.remove();
+            session.save();
+            return Boolean.TRUE;
+        } catch (RepositoryException e) {
+            LOGGER.error("Failed to delete test node", e);
             return Boolean.FALSE;
         }
     }

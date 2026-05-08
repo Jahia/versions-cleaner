@@ -4,11 +4,17 @@ import graphql.annotations.annotationTypes.GraphQLDescription;
 import graphql.annotations.annotationTypes.GraphQLField;
 import graphql.annotations.annotationTypes.GraphQLName;
 import graphql.annotations.annotationTypes.GraphQLTypeExtension;
+import org.jahia.api.Constants;
 import org.jahia.community.versionscleaner.CleanCommand;
 import org.jahia.community.versionscleaner.VersionsCleanerConfig;
 import org.jahia.modules.graphql.provider.dxm.DXGraphQLProvider;
 import org.jahia.modules.graphql.provider.dxm.security.GraphQLRequiresPermission;
 import org.jahia.osgi.BundleUtils;
+import org.jahia.services.content.JCRSessionFactory;
+
+import javax.jcr.ItemNotFoundException;
+import javax.jcr.RepositoryException;
+import javax.jcr.version.VersionHistory;
 
 @GraphQLTypeExtension(DXGraphQLProvider.Query.class)
 @GraphQLName("VersionsCleanerQueries")
@@ -24,6 +30,38 @@ public class VersionsCleanerQueryExtension {
     @GraphQLRequiresPermission("admin")
     public static Boolean isRunning() {
         return CleanCommand.isRunning();
+    }
+
+    @GraphQLField
+    @GraphQLName("versionsCleanerVersionCount")
+    @GraphQLDescription("Test helper: returns the number of non-root versions for the node at the given path. Returns -1 on error.")
+    @GraphQLRequiresPermission("admin")
+    public static Long versionCount(@GraphQLName("nodePath") String nodePath) {
+        try {
+            final JCRSessionFactory sf = JCRSessionFactory.getInstance();
+            final VersionHistory vh = sf.getCurrentSystemSession(Constants.EDIT_WORKSPACE, null, null)
+                    .getWorkspace().getVersionManager().getVersionHistory(nodePath);
+            return vh.getAllVersions().getSize() - 1L;
+        } catch (RepositoryException e) {
+            return -1L;
+        }
+    }
+
+    @GraphQLField
+    @GraphQLName("versionsCleanerHistoryExists")
+    @GraphQLDescription("Test helper: returns true if a version history node with the given UUID still exists in the repository.")
+    @GraphQLRequiresPermission("admin")
+    public static Boolean historyExists(@GraphQLName("historyId") String historyId) {
+        try {
+            JCRSessionFactory.getInstance()
+                    .getCurrentSystemSession(Constants.EDIT_WORKSPACE, null, null)
+                    .getNodeByIdentifier(historyId);
+            return Boolean.TRUE;
+        } catch (ItemNotFoundException e) {
+            return Boolean.FALSE;
+        } catch (RepositoryException e) {
+            return Boolean.FALSE;
+        }
     }
 
     @GraphQLField

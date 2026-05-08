@@ -53,25 +53,25 @@ describe('Versions Cleaner - Execution UI', () => {
     it('shows the Delete orphaned versions checkbox', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-delete-orphaned').should('exist');
+        cy.get('[aria-labelledby="vc-delete-orphaned-label"]').should('exist');
     });
 
     it('shows the Check integrity checkbox', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-check-integrity').should('exist');
+        cy.get('[aria-labelledby="vc-check-integrity-label"]').should('exist');
     });
 
     it('shows the Reindex workspace checkbox', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-reindex').should('exist');
+        cy.get('[aria-labelledby="vc-reindex-label"]').should('exist');
     });
 
     it('shows the Force restart checkbox', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-force-restart').should('exist');
+        cy.get('[aria-labelledby="vc-force-restart-label"]').should('exist');
     });
 
     // --- Run button ---

@@ -90,19 +90,19 @@ describe('Versions Cleaner - Configuration UI', () => {
     it('shows the Delete orphaned versions checkbox', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-cfg-delete-orphaned').should('exist');
+        cy.get('[aria-labelledby="vc-cfg-delete-orphaned-label"]').should('exist');
     });
 
     it('shows the Check integrity checkbox', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-cfg-check-integrity').should('exist');
+        cy.get('[aria-labelledby="vc-cfg-check-integrity-label"]').should('exist');
     });
 
     it('shows the Reindex workspace checkbox', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-cfg-reindex').should('exist');
+        cy.get('[aria-labelledby="vc-cfg-reindex-label"]').should('exist');
     });
 
     // --- Save button ---

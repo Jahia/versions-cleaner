@@ -23,6 +23,8 @@
     "subtreePathTooltip": "Restrict the scan to a subtree of the version storage. Leave blank to process the full tree.",
     "subtreePathPlaceholder": "e.g. 00/10/xx…",
     "forceRestartFromBeginning": "Force restart from beginning",
+    "runOptions": "Cleaner options",
+    "schedulerOptions": "Scheduler options",
     "scheduler": {
       "description": "Configure the automatic scheduled cleanup job. Changes to the schedule or enable/disable toggle require a module restart to take effect.",
       "enabled": "Enable scheduled job",
@@ -30,6 +32,7 @@
       "cronExpression": "Cron expression",
       "cronExpressionTooltip": "Quartz cron expression defining when the scheduled cleanup runs. Example: \"0 30 1 * * ?\" runs every day at 01:30.",
       "save": "Save",
+      "saving": "Saving…",
       "saved": "Configuration saved successfully.",
       "restartHint": "Schedule changes (enable/disable, cron expression) require a module restart to take effect."
     }

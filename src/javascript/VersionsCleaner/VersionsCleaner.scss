@@ -1,3 +1,15 @@
+.vc_sr_only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .vc_container {
   font-family: 'Nunito Sans', sans-serif;
   color: var(--color-dark, #131c21);
@@ -14,7 +26,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  user-select: none;
 }
 
 .vc_description {
@@ -61,7 +72,7 @@
 
 .vc_running_text {
   font-size: 14px;
-  color: var(--color-gray, #7a7f88);
+  color: var(--color-gray, #5c6370);
 }
 
 .vc_form {
@@ -87,7 +98,7 @@
 
 .vc_tooltip {
   cursor: help;
-  color: var(--color-gray, #7a7f88);
+  color: var(--color-gray, #5c6370);
   font-size: 12px;
 }
 
@@ -99,8 +110,10 @@
   font-size: 14px;
   font-family: 'Nunito Sans', sans-serif;
 
-  &:focus {
-    outline: none;
+  &:focus,
+  &:focus-visible {
+    outline: 2px solid var(--color-accent, #00a0e3);
+    outline-offset: 2px;
     border-color: var(--color-accent, #00a0e3);
   }
 }
@@ -113,8 +126,10 @@
   font-size: 14px;
   font-family: 'Nunito Sans', sans-serif;
 
-  &:focus {
-    outline: none;
+  &:focus,
+  &:focus-visible {
+    outline: 2px solid var(--color-accent, #00a0e3);
+    outline-offset: 2px;
     border-color: var(--color-accent, #00a0e3);
   }
 }
@@ -131,7 +146,15 @@
   margin-top: var(--spacing-medium, 16px);
 }
 
+.vc_checkboxLegend {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-dark, #131c21);
+  padding: 0;
+  margin-bottom: var(--spacing-small, 8px);
+}
+
 .vc_restartHint {
   margin-bottom: var(--spacing-medium, 16px);
-  color: var(--color-gray, #7a7f88);
+  color: var(--color-gray, #5c6370);
 }

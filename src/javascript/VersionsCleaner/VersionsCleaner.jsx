@@ -22,7 +22,12 @@ export const VersionsCleanerAdmin = () => {
     const {t} = useTranslation('versions-cleaner');
     const [form, setForm] = useState(DEFAULT_FORM);
     const [runStatus, setRunStatus] = useState(null);
-    const statusRef = useRef(null);
+    const [completionMsg, setCompletionMsg] = useState('');
+    const prevRunning = useRef(false);
+
+    React.useEffect(() => {
+        document.title = `${t('label.title')} — Jahia Administration`;
+    }, [t]);
 
     const {data, startPolling, stopPolling} = useQuery(IS_RUNNING, {
         fetchPolicy: 'network-only'
@@ -40,6 +45,15 @@ export const VersionsCleanerAdmin = () => {
         return () => stopPolling();
     }, [isRunning, startPolling, stopPolling]);
 
+    // Announce completion when isRunning transitions from true → false (N-1)
+    React.useEffect(() => {
+        if (prevRunning.current && !isRunning) {
+            setCompletionMsg(t('label.completed'));
+        }
+
+        prevRunning.current = isRunning;
+    }, [isRunning, t]);
+
     const [runCleaner, {loading: submitting}] = useMutation(RUN_CLEANER);
 
     const handleChange = (field, value) => {
@@ -47,7 +61,7 @@ export const VersionsCleanerAdmin = () => {
     };
 
     const handleRun = async () => {
-        setRunStatus(null);
+        setCompletionMsg('');
         try {
             const result = await runCleaner({
                 variables: {
@@ -71,8 +85,6 @@ export const VersionsCleanerAdmin = () => {
             console.error('Failed to start versions cleaner:', err);
             setRunStatus('error');
         }
-
-        setTimeout(() => statusRef.current?.focus(), 50);
     };
 
     const busy = submitting || isRunning;
@@ -80,38 +92,28 @@ export const VersionsCleanerAdmin = () => {
     const statusMessage = runStatus === 'started' ? t('label.started') :
         runStatus === 'already_running' ? t('label.alreadyRunning') :
         runStatus === 'error' ? t('label.error') : '';
-    const isErrorStatus = runStatus === 'error';
 
     return (
         <div className={styles.vc_container}>
+            {/* Two fixed-role live regions — AT registers role at first render; mutating role has no effect */}
+            <div role="status" aria-live="polite" aria-atomic="true" className={styles.vc_sr_only}>
+                {runStatus && runStatus !== 'error' ? statusMessage : ''}
+            </div>
+            <div role="alert" aria-live="assertive" aria-atomic="true" className={styles.vc_sr_only}>
+                {runStatus === 'error' ? statusMessage : ''}
+            </div>
+
+            {/* Running state + completion announcement */}
+            <div role="status" aria-live="polite" aria-atomic="true" className={styles.vc_sr_only}>
+                {isRunning ? t('label.running') : completionMsg}
+            </div>
+
             <div className={styles.vc_header}>
                 <h2>{t('label.title')}</h2>
             </div>
 
             <div className={styles.vc_description}>
                 <Typography>{t('label.description')}</Typography>
-            </div>
-
-            {/* Persistent live regions — always in DOM so AT registers them before content appears */}
-            <div
-                ref={statusRef}
-                tabIndex={-1}
-                role={isErrorStatus ? 'alert' : 'status'}
-                aria-live={isErrorStatus ? 'assertive' : 'polite'}
-                aria-atomic="true"
-                className={styles.vc_sr_only}
-            >
-                {statusMessage}
-            </div>
-
-            {/* Persistent live region for running state */}
-            <div
-                role="status"
-                aria-live="polite"
-                aria-atomic="true"
-                className={styles.vc_sr_only}
-            >
-                {isRunning ? t('label.running') : ''}
             </div>
 
             {runStatus === 'started' && (
@@ -150,6 +152,8 @@ export const VersionsCleanerAdmin = () => {
                         className={styles.vc_input}
                         value={String(form.nbVersionsToKeep)}
                         allowNegative
+                        required
+                        aria-required="true"
                         aria-describedby="vc-nb-versions-hint"
                         onChange={e => handleChange('nbVersionsToKeep', Number.parseInt(e.target.value, 10))}
                     />
@@ -170,6 +174,8 @@ export const VersionsCleanerAdmin = () => {
                         className={styles.vc_input}
                         value={String(form.maxExecutionTimeInMs)}
                         min={0}
+                        required
+                        aria-required="true"
                         aria-describedby="vc-max-time-hint"
                         onChange={e => handleChange('maxExecutionTimeInMs', Number.parseInt(e.target.value, 10) || 0)}
                     />
@@ -210,6 +216,7 @@ export const VersionsCleanerAdmin = () => {
                         className={styles.vc_inputWide}
                         placeholder={t('label.subtreePathPlaceholder')}
                         value={form.subtreePath}
+                        autoComplete="off"
                         aria-describedby="vc-subtree-hint"
                         onChange={e => handleChange('subtreePath', e.target.value)}
                     />

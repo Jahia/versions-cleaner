@@ -20,9 +20,9 @@
 .vc_header h2 {
   margin: 0;
   padding: 0;
-  margin-left: 25px;
-  font-size: 25px;
-  line-height: 85px;
+  margin-left: 1.5625rem;
+  font-size: 1.5625rem;
+  line-height: 5.3125rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -39,7 +39,7 @@
 .vc_alert {
   padding: var(--spacing-small, 8px) var(--spacing-medium, 16px);
   border-radius: var(--radius, 4px);
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-bottom: var(--spacing-medium, 16px);
   border: 1px solid transparent;
 
@@ -52,7 +52,7 @@
   &--warning {
     background: #fff8e1;
     border-color: var(--color-warning, #ffc107);
-    color: #856404;
+    color: #6b4f03;
   }
 
   &--error {
@@ -71,7 +71,7 @@
 }
 
 .vc_running_text {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--color-gray, #5c6370);
 }
 
@@ -88,7 +88,7 @@
 
 .vc_label {
   min-width: 200px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-dark, #131c21);
   display: flex;
@@ -99,18 +99,17 @@
 .vc_tooltip {
   cursor: help;
   color: var(--color-gray, #5c6370);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .vc_input {
   width: 120px;
   padding: 6px 10px;
-  border: 1px solid var(--color-gray_light, #dadada);
+  border: 1px solid #767676;
   border-radius: var(--radius, 4px);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-family: 'Nunito Sans', sans-serif;
 
-  &:focus,
   &:focus-visible {
     outline: 2px solid var(--color-accent, #00a0e3);
     outline-offset: 2px;
@@ -121,12 +120,11 @@
 .vc_inputWide {
   flex: 1;
   padding: 6px 10px;
-  border: 1px solid var(--color-gray_light, #dadada);
+  border: 1px solid #767676;
   border-radius: var(--radius, 4px);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-family: 'Nunito Sans', sans-serif;
 
-  &:focus,
   &:focus-visible {
     outline: 2px solid var(--color-accent, #00a0e3);
     outline-offset: 2px;
@@ -147,7 +145,7 @@
 }
 
 .vc_checkboxLegend {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-dark, #131c21);
   padding: 0;

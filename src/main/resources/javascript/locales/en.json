@@ -9,6 +9,7 @@
     "running": "Clean in progress…",
     "started": "Versions cleaner started successfully.",
     "alreadyRunning": "A clean operation is already in progress.",
+    "completed": "Versions cleaner operation completed.",
     "error": "An error occurred. Check server logs for details.",
     "nbVersionsToKeep": "Versions to keep",
     "nbVersionsToKeepTooltip": "Number of versions to keep per non-orphan history. Set to -1 to skip non-orphan histories entirely.",

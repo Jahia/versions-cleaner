@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useMutation, useQuery} from '@apollo/client';
 import {useTranslation} from 'react-i18next';
 import {Button, CheckboxItem, Input, NumberInput, Switch, Tooltip, Typography} from '@jahia/moonstone';
@@ -19,7 +19,10 @@ export const SchedulerConfig = () => {
     const {t} = useTranslation('versions-cleaner');
     const [form, setForm] = useState(DEFAULT_CONFIG);
     const [saveStatus, setSaveStatus] = useState(null);
-    const statusRef = useRef(null);
+
+    useEffect(() => {
+        document.title = `${t('label.menu_configuration')} — Jahia Administration`;
+    }, [t]);
 
     const {data, loading} = useQuery(GET_CONFIG, {fetchPolicy: 'network-only'});
 
@@ -45,7 +48,6 @@ export const SchedulerConfig = () => {
     };
 
     const handleSave = async () => {
-        setSaveStatus(null);
         try {
             const result = await saveConfig({
                 variables: {
@@ -62,32 +64,27 @@ export const SchedulerConfig = () => {
         } catch {
             setSaveStatus('error');
         }
-
-        setTimeout(() => statusRef.current?.focus(), 50);
     };
+
+    const saveSuccessMsg = saveStatus === 'success' ? t('label.scheduler.saved') : '';
+    const saveErrorMsg = saveStatus === 'error' ? t('label.error') : '';
 
     return (
         <div className={styles.vc_container}>
+            {/* Two fixed-role live regions — AT caches role at registration; dynamic role mutation is ignored */}
+            <div role="status" aria-live="polite" aria-atomic="true" className={styles.vc_sr_only}>
+                {saveSuccessMsg}
+            </div>
+            <div role="alert" aria-live="assertive" aria-atomic="true" className={styles.vc_sr_only}>
+                {saveErrorMsg}
+            </div>
+
             <div className={styles.vc_header}>
                 <h2>{t('label.menu_configuration')}</h2>
             </div>
 
             <div className={styles.vc_description}>
                 <Typography>{t('label.scheduler.description')}</Typography>
-            </div>
-
-            {/* Persistent live regions — always in DOM so AT registers them before content appears */}
-            <div
-                ref={statusRef}
-                tabIndex={-1}
-                role={saveStatus === 'error' ? 'alert' : 'status'}
-                aria-live={saveStatus === 'error' ? 'assertive' : 'polite'}
-                aria-atomic="true"
-                className={styles.vc_sr_only}
-            >
-                {saveStatus === 'success' ? t('label.scheduler.saved') :
-                    saveStatus === 'error' ? t('label.error') :
-                    saving ? t('label.scheduler.saving') : ''}
             </div>
 
             {saveStatus === 'success' && (
@@ -102,13 +99,15 @@ export const SchedulerConfig = () => {
             )}
 
             <div className={styles.vc_form}>
+                {/* C-2: Switch labeled via aria-labelledby (ARIA16). <label> removed — it had no htmlFor
+                    and would confuse AT. The span id is the label anchor for aria-labelledby. */}
                 <div className={styles.vc_fieldGroup}>
-                    <label className={styles.vc_label}>
+                    <div className={styles.vc_label}>
                         <span id="vc-cfg-enabled-label">{t('label.scheduler.enabled')}</span>
                         <Tooltip label={t('label.scheduler.enabledTooltip')}>
                             <span aria-hidden="true" className={styles.vc_tooltip}>ⓘ</span>
                         </Tooltip>
-                    </label>
+                    </div>
                     <Switch
                         aria-labelledby="vc-cfg-enabled-label"
                         aria-describedby="vc-cfg-enabled-hint"
@@ -133,12 +132,17 @@ export const SchedulerConfig = () => {
                         className={styles.vc_inputWide}
                         value={loading ? '' : form.cronExpression}
                         isDisabled={loading || form.disabled}
-                        aria-describedby="vc-cron-hint"
+                        required
+                        aria-required="true"
+                        aria-invalid={saveStatus === 'error' ? 'true' : undefined}
+                        aria-describedby="vc-cron-hint vc-cron-error"
+                        autoComplete="off"
                         onChange={e => handleChange('cronExpression', e.target.value)}
                     />
                     <span id="vc-cron-hint" className={styles.vc_sr_only}>
                         {t('label.scheduler.cronExpressionTooltip')}
                     </span>
+                    <span id="vc-cron-error" className={styles.vc_sr_only}>{saveErrorMsg}</span>
                 </div>
 
                 <div className={styles.vc_fieldGroup}>
@@ -154,6 +158,8 @@ export const SchedulerConfig = () => {
                         value={String(form.nbVersionsToKeep)}
                         allowNegative
                         isDisabled={loading}
+                        required
+                        aria-required="true"
                         aria-describedby="vc-cfg-nb-versions-hint"
                         onChange={e => handleChange('nbVersionsToKeep', Number.parseInt(e.target.value, 10))}
                     />
@@ -175,6 +181,8 @@ export const SchedulerConfig = () => {
                         value={String(form.maxExecutionTimeInMs)}
                         min={0}
                         isDisabled={loading}
+                        required
+                        aria-required="true"
                         aria-describedby="vc-cfg-max-time-hint"
                         onChange={e => handleChange('maxExecutionTimeInMs', Number.parseInt(e.target.value, 10) || 0)}
                     />

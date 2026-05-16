@@ -125,9 +125,12 @@ public class CleanCommand implements Action {
     }
 
     public static void execute(CleanerContext context) throws RepositoryException {
+        if (!RUNNING.compareAndSet(false, true)) {
+            logger.info("Versions cleaner execute requested but already running");
+            return;
+        }
         if (context.isRunAsynchronously()) {
             Executors.newSingleThreadExecutor().execute(() -> {
-                RUNNING.set(true);
                 try {
                     Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
                     applyStartupDelay();
@@ -141,7 +144,6 @@ public class CleanCommand implements Action {
                 }
             });
         } else {
-            RUNNING.set(true);
             try {
                 context.startProcess();
                 deleteVersions(context);
@@ -683,7 +685,14 @@ public class CleanCommand implements Action {
         if (StringUtils.isBlank(relativePath) || "/".equals(relativePath)) {
             return parent;
         }
-        return parent.getNode(relativePath.startsWith("/") ? relativePath.substring(1) : relativePath);
+        final String normalized = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
+        // Reject parent-directory traversal segments so the cleanup scope cannot escape /jcr:system/jcr:versionStorage
+        for (String segment : normalized.split("/")) {
+            if ("..".equals(segment) || ".".equals(segment)) {
+                throw new IllegalArgumentException("Invalid subtree path: parent or self segments are not allowed");
+            }
+        }
+        return parent.getNode(normalized);
     }
 
     private static String toPrintableName(String versionName) {

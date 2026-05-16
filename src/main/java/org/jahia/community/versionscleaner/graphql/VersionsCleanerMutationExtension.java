@@ -15,6 +15,7 @@ import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
+import org.quartz.CronExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -244,6 +245,10 @@ public class VersionsCleanerMutationExtension {
                 props.put("disabled", String.valueOf(disabled));
             }
             if (cronExpression != null && !cronExpression.isEmpty()) {
+                if (!CronExpression.isValidExpression(cronExpression)) {
+                    LOGGER.warn("Rejected invalid cron expression in versions cleaner saveConfig");
+                    return Boolean.FALSE;
+                }
                 props.put("cronExpression", cronExpression);
             }
             if (nbVersionsToKeep != null) {

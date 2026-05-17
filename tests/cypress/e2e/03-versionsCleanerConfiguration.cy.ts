@@ -66,7 +66,7 @@ describe('Versions Cleaner - Configuration UI', () => {
     it('shows the Enable scheduled job toggle', () => {
         cy.login();
         cy.visit(adminPath);
-        cy.get('#vc-cfg-scheduler-enabled').should('exist');
+        cy.get('[aria-labelledby=vc-cfg-enabled-label]').should('exist');
     });
 
     it('shows the Cron expression field', () => {

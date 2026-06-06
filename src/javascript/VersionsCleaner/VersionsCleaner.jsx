@@ -81,8 +81,7 @@ export const VersionsCleanerAdmin = () => {
             } else {
                 setRunStatus('already_running');
             }
-        } catch (err) {
-            console.error('Failed to start versions cleaner:', err);
+        } catch (_err) {
             setRunStatus('error');
         }
     };

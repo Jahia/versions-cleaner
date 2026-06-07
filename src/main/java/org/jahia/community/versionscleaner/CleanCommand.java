@@ -52,7 +52,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.Executors;
 
 @Command(scope = "versions-cleaner", name = "run", description = "Run a scan the versions tree, and perform the configured actions")
 @Service
@@ -130,10 +129,13 @@ public class CleanCommand implements Action {
             return;
         }
         if (context.isRunAsynchronously()) {
-            Executors.newSingleThreadExecutor().execute(() -> {
+            final Thread worker = new Thread(() -> {
                 try {
                     Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
                     applyStartupDelay();
+                    if (Thread.currentThread().isInterrupted()) {
+                        return;
+                    }
                     context.startProcess();
                     deleteVersions(context);
                 } catch (RepositoryException e) {
@@ -142,7 +144,9 @@ public class CleanCommand implements Action {
                     RUNNING.set(false);
                     context.finalizeProcess();
                 }
-            });
+            }, "versions-cleaner-worker");
+            worker.setDaemon(true);
+            worker.start();
         } else {
             try {
                 context.startProcess();

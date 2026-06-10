@@ -22,6 +22,13 @@ public class CleanerContext {
 
     private static final Logger logger = LoggerFactory.getLogger(CleanerContext.class);
 
+    // Default number of processed version histories between forced JCR session refreshes. Refreshing
+    // periodically keeps the session caches from growing unbounded during a long destructive scan.
+    static final long DEFAULT_SESSION_REFRESH_INTERVAL = 100L;
+    // Default threshold (in versions) above which an orphaned history is purged version-by-version to
+    // keep the memory footprint bounded instead of materialising the whole history at once.
+    static final long DEFAULT_LONG_HISTORY_PURGE_THRESHOLD = 1000L;
+
     private final AtomicBoolean interruptionHandler;
     private boolean reindexDefaultWorkspace = Boolean.FALSE;
     private boolean checkIntegrity = Boolean.FALSE;
@@ -33,9 +40,9 @@ public class CleanerContext {
     private List<String> skippedPaths = null;
     private boolean restartFromLastPosition = Boolean.FALSE;
     private boolean runAsynchronously = Boolean.TRUE;
-    private long thresholdLongHistoryPurgeStrategy = 1000;
+    private long thresholdLongHistoryPurgeStrategy = DEFAULT_LONG_HISTORY_PURGE_THRESHOLD;
     private boolean useVersioningApi = Boolean.FALSE;
-    private long sessionRefreshInterval = 100L;
+    private long sessionRefreshInterval = DEFAULT_SESSION_REFRESH_INTERVAL;
 
     private Connection dbConnection;
     private JCRSessionWrapper editSession;
@@ -181,9 +188,12 @@ public class CleanerContext {
     }
 
     public void refreshSessions() throws RepositoryException {
+        // Guard against a misconfigured interval: a non-positive value would otherwise raise
+        // ArithmeticException (modulo by zero) and abort the scan mid-batch.
+        if (sessionRefreshInterval <= 0) return;
         if (processedVersionHistoriesCount % sessionRefreshInterval != 0) return;
-        editSession.refresh(false);
-        liveSession.refresh(false);
+        if (editSession != null) editSession.refresh(false);
+        if (liveSession != null) liveSession.refresh(false);
     }
 
     /*

@@ -74,6 +74,11 @@ public class CleanCommand implements Action {
     private static final String PAUSE_DURATION_MARKER = "versions-cleaner.pause.duration";
     private static final String STARTUP_DELAY_MARKER = "versions-cleaner.startup.delay";
     private static final String FAILED_TO_REMOVE = "Failed to remove ";
+    // The version storage of a node always contains an implicit jcr:rootVersion that must never be deleted.
+    // Retention math is expressed in terms of deletable (non-root) versions, so the desired count is offset by it.
+    private static final int ROOT_VERSION_COUNT = 1;
+    // Default truncation length applied to version names before logging, to avoid flooding logs with huge names.
+    private static final int MAX_PRINTABLE_NAME_LENGTH = 2000;
 
     @Option(name = "-r", aliases = "--reindex-default-workspace", description = "Reindex default workspace before cleaning")
     private Boolean reindexDefaultWorkspace = Boolean.FALSE;
@@ -365,7 +370,8 @@ public class CleanCommand implements Action {
     }
 
     private static void keepLastNVersions(VersionHistory vh, CleanerContext context) {
-        if (context.getNbVersionsToKeep() < 0) return;
+        final long nbVersionsToKeep = context.getNbVersionsToKeep();
+        if (nbVersionsToKeep < 0) return;
 
         String path;
         try {
@@ -379,17 +385,35 @@ public class CleanCommand implements Action {
             final RangeIterator versionIterator = getVersionsIterator(vh, context);
             final long nbVersions = getVersionsCount(vh, versionIterator, context);
             logger.debug("{} has {} versions", path, nbVersions);
-            // Do clean if we have more versions than the desired number + 1 for the root version
-            if (nbVersions > context.getNbVersionsToKeep() + 1) {
+            // Do clean only if we have more versions than the desired number + the implicit root version.
+            if (nbVersions > nbVersionsToKeep + ROOT_VERSION_COUNT) {
                 final List<String> versionNames = getNonRootVersionNames(versionIterator, context);
-                final int nbToKeep = (int) context.getNbVersionsToKeep();
-                versionNames.subList(versionNames.size() - nbToKeep, versionNames.size()).clear();
+                retainNewestVersions(versionNames, nbVersionsToKeep);
                 final long deletedVersions = deleteVersionNodes(vh, versionNames, context);
                 context.trackDeletedVersions(deletedVersions, false);
             }
         } catch (Exception ex) {
-            logger.info("Exception when trying to clean a version history", ex);
+            // Isolate the failure to this version history: log with context (this is a destructive
+            // operation) and let the scan continue with the remaining histories rather than aborting.
+            logger.error("Failed to reduce version history {}", path, ex);
         }
+    }
+
+    /**
+     * Trims {@code versionNames} (ordered oldest-first, root already excluded) so that only the
+     * {@code nbVersionsToKeep} newest entries are removed from the deletion candidate list, leaving the
+     * oldest ones to be deleted. The cut point is clamped defensively: counting differences between
+     * the version-storage iterator and the materialised candidate list must never produce a negative
+     * index or attempt to keep more versions than exist.
+     */
+    static void retainNewestVersions(List<String> versionNames, long nbVersionsToKeep) {
+        final int size = versionNames.size();
+        // nbVersionsToKeep is bounded by the number of versions ever created for a node, so it fits an int;
+        // clamp anyway to stay safe against pathological/overflowing configuration values.
+        final int nbToKeep = (int) Math.min(nbVersionsToKeep, size);
+        final int fromIndex = Math.max(0, size - nbToKeep);
+        if (fromIndex >= size) return;
+        versionNames.subList(fromIndex, size).clear();
     }
 
     private static long deleteVersionNodes(VersionHistory vh, List<String> names, CleanerContext context) {
@@ -689,18 +713,26 @@ public class CleanCommand implements Action {
         if (StringUtils.isBlank(relativePath) || "/".equals(relativePath)) {
             return parent;
         }
+        return parent.getNode(normalizeSubtreePath(relativePath));
+    }
+
+    /**
+     * Normalises a configured subtree path to a relative path under the version storage root and rejects any
+     * parent ({@code ..}) or self ({@code .}) segment, so the destructive scan can never escape
+     * {@code /jcr:system/jcr:versionStorage}. Returns the relative path (leading slash stripped).
+     */
+    static String normalizeSubtreePath(String relativePath) {
         final String normalized = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
-        // Reject parent-directory traversal segments so the cleanup scope cannot escape /jcr:system/jcr:versionStorage
         for (String segment : normalized.split("/")) {
             if ("..".equals(segment) || ".".equals(segment)) {
                 throw new IllegalArgumentException("Invalid subtree path: parent or self segments are not allowed");
             }
         }
-        return parent.getNode(normalized);
+        return normalized;
     }
 
     private static String toPrintableName(String versionName) {
-        return toPrintableName(versionName, 2000);
+        return toPrintableName(versionName, MAX_PRINTABLE_NAME_LENGTH);
     }
 
     private static String toPrintableName(String versionName, int maxLength) {

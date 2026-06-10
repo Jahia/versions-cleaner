@@ -38,7 +38,7 @@ public class VersionsCleanerMutationExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerRun")
     @GraphQLDescription("Triggers a versions clean operation asynchronously. Returns false if a clean is already running.")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     @SuppressWarnings("java:S107")
     public static Boolean run(
             @GraphQLName("nbVersionsToKeep")
@@ -104,7 +104,7 @@ public class VersionsCleanerMutationExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerCreateTestVersions")
     @GraphQLDescription("Test helper: creates a versionable node and checks it in the given number of times. Returns the version history UUID, or null on error.")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static String createTestVersions(
             @GraphQLName("name")
             @GraphQLDescription("Suffix appended to the test node name")
@@ -157,7 +157,7 @@ public class VersionsCleanerMutationExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerDeleteTestNode")
     @GraphQLDescription("Test helper: removes the test node created by versionsCleanerCreateTestVersions.")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static Boolean deleteTestNode(
             @GraphQLName("name")
             @GraphQLDescription("Same suffix used when creating the node")
@@ -189,7 +189,7 @@ public class VersionsCleanerMutationExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerSetStartupDelay")
     @GraphQLDescription("Sets a one-shot startup delay (ms) applied before the next async run. Pass 0 to clear. Intended for automated tests only.")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static Boolean setStartupDelay(
             @GraphQLName("delayMs")
             @GraphQLDescription("Delay in milliseconds (0 = clear)")
@@ -201,7 +201,7 @@ public class VersionsCleanerMutationExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerSaveConfig")
     @GraphQLDescription("Saves the versions cleaner scheduled job configuration. A module restart is required for schedule changes to take effect.")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static Boolean saveConfig(
             @GraphQLName("disabled")
             @GraphQLDescription("Whether the scheduled cleanup job is disabled")

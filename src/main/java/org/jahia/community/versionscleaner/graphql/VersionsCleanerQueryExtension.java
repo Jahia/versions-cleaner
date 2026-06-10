@@ -26,7 +26,7 @@ public class VersionsCleanerQueryExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerIsRunning")
     @GraphQLDescription("Returns true if a versions clean operation is currently in progress")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static Boolean isRunning() {
         return CleanCommand.isRunning();
     }
@@ -34,7 +34,7 @@ public class VersionsCleanerQueryExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerVersionCount")
     @GraphQLDescription("Test helper: returns the number of non-root versions for the node at the given path. Returns -1 on error.")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static Long versionCount(@GraphQLName("nodePath") String nodePath) {
         try {
             final JCRSessionFactory sf = JCRSessionFactory.getInstance();
@@ -49,7 +49,7 @@ public class VersionsCleanerQueryExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerHistoryExists")
     @GraphQLDescription("Test helper: returns true if a version history node with the given UUID still exists in the repository.")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static Boolean historyExists(@GraphQLName("historyId") String historyId) {
         try {
             JCRSessionFactory.getInstance()
@@ -64,7 +64,7 @@ public class VersionsCleanerQueryExtension {
     @GraphQLField
     @GraphQLName("versionsCleanerConfig")
     @GraphQLDescription("Returns the current versions cleaner scheduled job configuration")
-    @GraphQLRequiresPermission("admin")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
     public static GqlVersionsCleanerConfig config() {
         final VersionsCleanerConfig config = BundleUtils.getOsgiService(VersionsCleanerConfig.class, null);
         if (config == null) {

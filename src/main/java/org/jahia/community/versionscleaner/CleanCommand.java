@@ -64,6 +64,8 @@ public class CleanCommand implements Action {
     public static boolean isRunning() {
         return RUNNING.get();
     }
+    // S1075: this is the JCR-specification-mandated version storage path, not a configurable location.
+    @SuppressWarnings("java:S1075")
     private static final String VERSIONS_PATH = "/jcr:system/jcr:versionStorage";
     private static final String[] INVALID_REFERENCE_NODE_TYPES_TO_REMOVE = new String[]{
             JcrConstants.NT_HIERARCHYNODE,
@@ -408,8 +410,8 @@ public class CleanCommand implements Action {
      */
     static void retainNewestVersions(List<String> versionNames, long nbVersionsToKeep) {
         final int size = versionNames.size();
-        // nbVersionsToKeep is bounded by the number of versions ever created for a node, so it fits an int;
-        // clamp anyway to stay safe against pathological/overflowing configuration values.
+        // The retain count never exceeds the number of versions for a node and so fits within an int range.
+        // Clamp it anyway to stay safe against pathological or overflowing configuration values.
         final int nbToKeep = (int) Math.min(nbVersionsToKeep, size);
         final int fromIndex = Math.max(0, size - nbToKeep);
         if (fromIndex >= size) return;

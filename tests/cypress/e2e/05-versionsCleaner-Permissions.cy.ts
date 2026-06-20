@@ -60,7 +60,7 @@ describe('Versions Cleaner — permission enforcement', () => {
         it('allows the gated query for a user granted only the module permission', () => {
             queryIsRunningAs(ALLOWED_USER).then((result: never) => {
                 expect(errorsOf(result), 'should have no errors').to.have.length(0);
-                expect((result as {data: {versionsCleanerIsRunning: boolean}}).data.versionsCleanerIsRunning).to.be.a('boolean');
+                expect((result as {data: {versionsCleaner: {isRunning: boolean}}}).data.versionsCleaner.isRunning).to.be.a('boolean');
             });
         });
     });

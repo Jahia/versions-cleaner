@@ -1,3 +1,5 @@
 mutation deleteTestNode($name: String) {
-    versionsCleanerDeleteTestNode(name: $name)
+    versionsCleaner {
+        deleteTestNode(name: $name)
+    }
 }

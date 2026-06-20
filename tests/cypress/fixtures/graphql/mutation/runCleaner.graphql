@@ -8,14 +8,16 @@ mutation runCleaner(
     $subtreePath: String
     $forceRestartFromBeginning: Boolean
 ) {
-    versionsCleanerRun(
-        nbVersionsToKeep: $nbVersionsToKeep
-        deleteOrphanedVersions: $deleteOrphanedVersions
-        checkIntegrity: $checkIntegrity
-        reindexDefaultWorkspace: $reindexDefaultWorkspace
-        maxExecutionTimeInMs: $maxExecutionTimeInMs
-        pauseDuration: $pauseDuration
-        subtreePath: $subtreePath
-        forceRestartFromBeginning: $forceRestartFromBeginning
-    )
+    versionsCleaner {
+        run(
+            nbVersionsToKeep: $nbVersionsToKeep
+            deleteOrphanedVersions: $deleteOrphanedVersions
+            checkIntegrity: $checkIntegrity
+            reindexDefaultWorkspace: $reindexDefaultWorkspace
+            maxExecutionTimeInMs: $maxExecutionTimeInMs
+            pauseDuration: $pauseDuration
+            subtreePath: $subtreePath
+            forceRestartFromBeginning: $forceRestartFromBeginning
+        )
+    }
 }

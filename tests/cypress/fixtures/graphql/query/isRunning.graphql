@@ -1,3 +1,5 @@
 query {
-    versionsCleanerIsRunning
+    versionsCleaner {
+        isRunning
+    }
 }

@@ -33,7 +33,7 @@ export const VersionsCleanerAdmin = () => {
         fetchPolicy: 'network-only'
     });
 
-    const isRunning = data?.versionsCleanerIsRunning === true;
+    const isRunning = data?.versionsCleaner?.isRunning === true;
 
     React.useEffect(() => {
         if (isRunning) {
@@ -75,7 +75,7 @@ export const VersionsCleanerAdmin = () => {
                     forceRestartFromBeginning: form.forceRestartFromBeginning
                 }
             });
-            if (result.data?.versionsCleanerRun === true) {
+            if (result.data?.versionsCleaner?.run === true) {
                 setRunStatus('started');
                 startPolling(POLL_INTERVAL_MS);
             } else {

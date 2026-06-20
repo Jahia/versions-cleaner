@@ -1,3 +1,5 @@
 mutation setStartupDelay($delayMs: Long) {
-    versionsCleanerSetStartupDelay(delayMs: $delayMs)
+    versionsCleaner {
+        setStartupDelay(delayMs: $delayMs)
+    }
 }

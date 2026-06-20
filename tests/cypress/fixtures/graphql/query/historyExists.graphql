@@ -1,3 +1,5 @@
 query historyExists($historyId: String) {
-    versionsCleanerHistoryExists(historyId: $historyId)
+    versionsCleaner {
+        historyExists(historyId: $historyId)
+    }
 }

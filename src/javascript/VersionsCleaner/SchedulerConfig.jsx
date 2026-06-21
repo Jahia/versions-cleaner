@@ -27,8 +27,8 @@ export const SchedulerConfig = () => {
     const {data, loading} = useQuery(GET_CONFIG, {fetchPolicy: 'network-only'});
 
     useEffect(() => {
-        if (data?.versionsCleanerConfig) {
-            const c = data.versionsCleanerConfig;
+        if (data?.versionsCleaner?.config) {
+            const c = data.versionsCleaner.config;
             setForm({
                 disabled: c.disabled,
                 cronExpression: c.cronExpression,
@@ -60,7 +60,7 @@ export const SchedulerConfig = () => {
                     maxExecutionTimeInMs: form.maxExecutionTimeInMs
                 }
             });
-            setSaveStatus(result.data?.versionsCleanerSaveConfig === true ? 'success' : 'error');
+            setSaveStatus(result.data?.versionsCleaner?.saveConfig === true ? 'success' : 'error');
         } catch {
             setSaveStatus('error');
         }

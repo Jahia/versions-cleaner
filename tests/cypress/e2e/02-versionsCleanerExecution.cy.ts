@@ -83,7 +83,7 @@ describe('Versions Cleaner - Execution UI', () => {
         cy.visit(adminPath);
         // Wait for any in-progress run from API tests to complete
         cy.waitUntil(
-            () => cy.apollo({query: isRunning}).its('data.versionsCleanerIsRunning').then(v => v === false),
+            () => cy.apollo({query: isRunning}).its('data.versionsCleaner.isRunning').then(v => v === false),
             {timeout: 30000, interval: 1000}
         );
         cy.contains('button', 'Run cleaner').should('not.be.disabled');
@@ -95,7 +95,7 @@ describe('Versions Cleaner - Execution UI', () => {
         cy.login();
         cy.visit(adminPath);
         cy.waitUntil(
-            () => cy.apollo({query: isRunning}).its('data.versionsCleanerIsRunning').then(v => v === false),
+            () => cy.apollo({query: isRunning}).its('data.versionsCleaner.isRunning').then(v => v === false),
             {timeout: 30000, interval: 1000}
         );
         cy.contains('button', 'Run cleaner').click();
@@ -105,7 +105,7 @@ describe('Versions Cleaner - Execution UI', () => {
     it('disables the Run button while clean is in progress', () => {
         cy.login();
         cy.waitUntil(
-            () => cy.apollo({query: isRunning}).its('data.versionsCleanerIsRunning').then(v => v === false),
+            () => cy.apollo({query: isRunning}).its('data.versionsCleaner.isRunning').then(v => v === false),
             {timeout: 30000, interval: 1000}
         );
         // Arm a 5-second startup delay so the job stays running long enough to assert the UI state,

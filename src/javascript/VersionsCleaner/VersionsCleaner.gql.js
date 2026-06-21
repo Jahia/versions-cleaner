@@ -2,7 +2,9 @@ import {gql} from '@apollo/client';
 
 export const IS_RUNNING = gql`
     query VersionsCleanerIsRunning {
-        versionsCleanerIsRunning
+        versionsCleaner {
+            isRunning
+        }
     }
 `;
 
@@ -17,29 +19,33 @@ export const RUN_CLEANER = gql`
         $subtreePath: String
         $forceRestartFromBeginning: Boolean
     ) {
-        versionsCleanerRun(
-            nbVersionsToKeep: $nbVersionsToKeep
-            deleteOrphanedVersions: $deleteOrphanedVersions
-            checkIntegrity: $checkIntegrity
-            reindexDefaultWorkspace: $reindexDefaultWorkspace
-            maxExecutionTimeInMs: $maxExecutionTimeInMs
-            pauseDuration: $pauseDuration
-            subtreePath: $subtreePath
-            forceRestartFromBeginning: $forceRestartFromBeginning
-        )
+        versionsCleaner {
+            run(
+                nbVersionsToKeep: $nbVersionsToKeep
+                deleteOrphanedVersions: $deleteOrphanedVersions
+                checkIntegrity: $checkIntegrity
+                reindexDefaultWorkspace: $reindexDefaultWorkspace
+                maxExecutionTimeInMs: $maxExecutionTimeInMs
+                pauseDuration: $pauseDuration
+                subtreePath: $subtreePath
+                forceRestartFromBeginning: $forceRestartFromBeginning
+            )
+        }
     }
 `;
 
 export const GET_CONFIG = gql`
     query VersionsCleanerConfig {
-        versionsCleanerConfig {
-            disabled
-            cronExpression
-            nbVersionsToKeep
-            deleteOrphanedVersions
-            checkIntegrity
-            reindexDefaultWorkspace
-            maxExecutionTimeInMs
+        versionsCleaner {
+            config {
+                disabled
+                cronExpression
+                nbVersionsToKeep
+                deleteOrphanedVersions
+                checkIntegrity
+                reindexDefaultWorkspace
+                maxExecutionTimeInMs
+            }
         }
     }
 `;
@@ -54,14 +60,16 @@ export const SAVE_CONFIG = gql`
         $reindexDefaultWorkspace: Boolean
         $maxExecutionTimeInMs: Long
     ) {
-        versionsCleanerSaveConfig(
-            disabled: $disabled
-            cronExpression: $cronExpression
-            nbVersionsToKeep: $nbVersionsToKeep
-            deleteOrphanedVersions: $deleteOrphanedVersions
-            checkIntegrity: $checkIntegrity
-            reindexDefaultWorkspace: $reindexDefaultWorkspace
-            maxExecutionTimeInMs: $maxExecutionTimeInMs
-        )
+        versionsCleaner {
+            saveConfig(
+                disabled: $disabled
+                cronExpression: $cronExpression
+                nbVersionsToKeep: $nbVersionsToKeep
+                deleteOrphanedVersions: $deleteOrphanedVersions
+                checkIntegrity: $checkIntegrity
+                reindexDefaultWorkspace: $reindexDefaultWorkspace
+                maxExecutionTimeInMs: $maxExecutionTimeInMs
+            )
+        }
     }
 `;

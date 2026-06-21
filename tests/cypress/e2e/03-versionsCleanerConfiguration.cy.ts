@@ -120,7 +120,7 @@ describe('Versions Cleaner - Configuration UI', () => {
         cy.visit(adminPath);
         // Default state has scheduler disabled → cron field should be disabled
         cy.apollo({query: getConfig})
-            .its('data.versionsCleanerConfig.disabled')
+            .its('data.versionsCleaner.config.disabled')
             .should('eq', true);
         cy.get('#vc-cron').should('have.attr', 'disabled');
     });
@@ -147,7 +147,7 @@ describe('Versions Cleaner - Configuration UI', () => {
 
         // Verify via GraphQL that the value was actually persisted
         cy.apollo({query: getConfig})
-            .its('data.versionsCleanerConfig.nbVersionsToKeep')
+            .its('data.versionsCleaner.config.nbVersionsToKeep')
             .should('eq', 4);
     });
 });

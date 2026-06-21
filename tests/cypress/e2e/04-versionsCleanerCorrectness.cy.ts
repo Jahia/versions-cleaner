@@ -16,7 +16,7 @@ describe('Versions Cleaner - Semantic Correctness', () => {
 
     const waitForIdle = () =>
         cy.waitUntil(
-            () => cy.apollo({query: isRunning}).its('data.versionsCleanerIsRunning').then(v => v === false),
+            () => cy.apollo({query: isRunning}).its('data.versionsCleaner.isRunning').then(v => v === false),
             {timeout: 60000, interval: 1000}
         );
 
@@ -35,7 +35,7 @@ describe('Versions Cleaner - Semantic Correctness', () => {
         const nodePath = `/sites/systemsite/contents/vc-test-${nodeName}`;
 
         cy.apollo({mutation: createTestVersions, variables: {name: nodeName, versionCount: 5}})
-            .its('data.versionsCleanerCreateTestVersions')
+            .its('data.versionsCleaner.createTestVersions')
             .should('be.a', 'string');
 
         waitForIdle();
@@ -51,12 +51,12 @@ describe('Versions Cleaner - Semantic Correctness', () => {
                 pauseDuration: 0,
                 forceRestartFromBeginning: true
             }
-        }).its('data.versionsCleanerRun').should('eq', true);
+        }).its('data.versionsCleaner.run').should('eq', true);
 
         waitForIdle();
 
         cy.apollo({query: getVersionCount, variables: {nodePath}})
-            .its('data.versionsCleanerVersionCount')
+            .its('data.versionsCleaner.versionCount')
             .should('eq', 2);
 
         cy.apollo({mutation: deleteTestNode, variables: {name: nodeName}});
@@ -66,12 +66,12 @@ describe('Versions Cleaner - Semantic Correctness', () => {
         const nodeName = 'correctness-orphan';
 
         cy.apollo({mutation: createTestVersions, variables: {name: nodeName, versionCount: 2}})
-            .its('data.versionsCleanerCreateTestVersions')
+            .its('data.versionsCleaner.createTestVersions')
             .then(historyId => {
                 cy.apollo({mutation: deleteTestNode, variables: {name: nodeName}});
 
                 cy.apollo({query: historyExists, variables: {historyId}})
-                    .its('data.versionsCleanerHistoryExists')
+                    .its('data.versionsCleaner.historyExists')
                     .should('eq', true);
 
                 waitForIdle();
@@ -87,12 +87,12 @@ describe('Versions Cleaner - Semantic Correctness', () => {
                         pauseDuration: 0,
                         forceRestartFromBeginning: true
                     }
-                }).its('data.versionsCleanerRun').should('eq', true);
+                }).its('data.versionsCleaner.run').should('eq', true);
 
                 waitForIdle();
 
                 cy.apollo({query: historyExists, variables: {historyId}})
-                    .its('data.versionsCleanerHistoryExists')
+                    .its('data.versionsCleaner.historyExists')
                     .should('eq', false);
             });
     });

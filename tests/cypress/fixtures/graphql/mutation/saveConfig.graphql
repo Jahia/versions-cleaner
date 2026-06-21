@@ -7,13 +7,15 @@ mutation saveConfig(
     $reindexDefaultWorkspace: Boolean
     $maxExecutionTimeInMs: Long
 ) {
-    versionsCleanerSaveConfig(
-        disabled: $disabled
-        cronExpression: $cronExpression
-        nbVersionsToKeep: $nbVersionsToKeep
-        deleteOrphanedVersions: $deleteOrphanedVersions
-        checkIntegrity: $checkIntegrity
-        reindexDefaultWorkspace: $reindexDefaultWorkspace
-        maxExecutionTimeInMs: $maxExecutionTimeInMs
-    )
+    versionsCleaner {
+        saveConfig(
+            disabled: $disabled
+            cronExpression: $cronExpression
+            nbVersionsToKeep: $nbVersionsToKeep
+            deleteOrphanedVersions: $deleteOrphanedVersions
+            checkIntegrity: $checkIntegrity
+            reindexDefaultWorkspace: $reindexDefaultWorkspace
+            maxExecutionTimeInMs: $maxExecutionTimeInMs
+        )
+    }
 }

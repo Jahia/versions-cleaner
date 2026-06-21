@@ -30,28 +30,28 @@ describe('Versions Cleaner - GraphQL API', () => {
         });
     });
 
-    // --- versionsCleanerIsRunning ---
+    // --- versionsCleaner.isRunning ---
 
-    describe('versionsCleanerIsRunning', () => {
+    describe('versionsCleaner.isRunning', () => {
         it('returns a boolean', () => {
             cy.apollo({query: isRunning})
-                .its('data.versionsCleanerIsRunning')
+                .its('data.versionsCleaner.isRunning')
                 .should('be.a', 'boolean');
         });
 
         it('returns false when no clean is in progress', () => {
             cy.apollo({query: isRunning})
-                .its('data.versionsCleanerIsRunning')
+                .its('data.versionsCleaner.isRunning')
                 .should('eq', false);
         });
     });
 
-    // --- versionsCleanerConfig ---
+    // --- versionsCleaner.config ---
 
-    describe('versionsCleanerConfig', () => {
+    describe('versionsCleaner.config', () => {
         it('returns all config fields', () => {
             cy.apollo({query: getConfig})
-                .its('data.versionsCleanerConfig')
+                .its('data.versionsCleaner.config')
                 .should(config => {
                     expect(config).to.have.property('disabled');
                     expect(config).to.have.property('cronExpression');
@@ -65,7 +65,7 @@ describe('Versions Cleaner - GraphQL API', () => {
 
         it('returns config fields with correct types', () => {
             cy.apollo({query: getConfig})
-                .its('data.versionsCleanerConfig')
+                .its('data.versionsCleaner.config')
                 .should(config => {
                     expect(config.disabled).to.be.a('boolean');
                     expect(config.cronExpression).to.be.a('string').and.not.be.empty;
@@ -78,9 +78,9 @@ describe('Versions Cleaner - GraphQL API', () => {
         });
     });
 
-    // --- versionsCleanerSaveConfig ---
+    // --- versionsCleaner.saveConfig ---
 
-    describe('versionsCleanerSaveConfig', () => {
+    describe('versionsCleaner.saveConfig', () => {
         it('saves config and returns true', () => {
             cy.apollo({
                 mutation: saveConfig,
@@ -94,28 +94,28 @@ describe('Versions Cleaner - GraphQL API', () => {
                     maxExecutionTimeInMs: 60000
                 }
             })
-                .its('data.versionsCleanerSaveConfig')
+                .its('data.versionsCleaner.saveConfig')
                 .should('eq', true);
         });
 
         it('saves nbVersionsToKeep and reads it back consistently', () => {
             cy.apollo({mutation: saveConfig, variables: {nbVersionsToKeep: 5}});
             cy.apollo({query: getConfig})
-                .its('data.versionsCleanerConfig.nbVersionsToKeep')
+                .its('data.versionsCleaner.config.nbVersionsToKeep')
                 .should('eq', 5);
         });
 
         it('saves maxExecutionTimeInMs and reads it back consistently', () => {
             cy.apollo({mutation: saveConfig, variables: {maxExecutionTimeInMs: 120000}});
             cy.apollo({query: getConfig})
-                .its('data.versionsCleanerConfig.maxExecutionTimeInMs')
+                .its('data.versionsCleaner.config.maxExecutionTimeInMs')
                 .should('eq', 120000);
         });
 
         it('saves disabled flag and reads it back consistently', () => {
             cy.apollo({mutation: saveConfig, variables: {disabled: false}});
             cy.apollo({query: getConfig})
-                .its('data.versionsCleanerConfig.disabled')
+                .its('data.versionsCleaner.config.disabled')
                 .should('eq', false);
         });
 
@@ -123,14 +123,14 @@ describe('Versions Cleaner - GraphQL API', () => {
             const cron = '0 0 2 * * ?';
             cy.apollo({mutation: saveConfig, variables: {cronExpression: cron}});
             cy.apollo({query: getConfig})
-                .its('data.versionsCleanerConfig.cronExpression')
+                .its('data.versionsCleaner.config.cronExpression')
                 .should('eq', cron);
         });
     });
 
-    // --- versionsCleanerRun ---
+    // --- versionsCleaner.run ---
 
-    describe('versionsCleanerRun', () => {
+    describe('versionsCleaner.run', () => {
         it('starts the cleaner and returns true', () => {
             cy.apollo({
                 mutation: runCleaner,
@@ -144,7 +144,7 @@ describe('Versions Cleaner - GraphQL API', () => {
                     forceRestartFromBeginning: true
                 }
             })
-                .its('data.versionsCleanerRun')
+                .its('data.versionsCleaner.run')
                 .should('eq', true);
         });
 
@@ -162,7 +162,7 @@ describe('Versions Cleaner - GraphQL API', () => {
                 }
             });
             cy.apollo({query: isRunning})
-                .its('data.versionsCleanerIsRunning')
+                .its('data.versionsCleaner.isRunning')
                 .should('eq', true);
         });
 
@@ -191,7 +191,7 @@ describe('Versions Cleaner - GraphQL API', () => {
                     forceRestartFromBeginning: true
                 }
             })
-                .its('data.versionsCleanerRun')
+                .its('data.versionsCleaner.run')
                 .should('eq', false);
         });
     });

@@ -1000,7 +1000,7 @@
   resolved "https://registry.yarnpkg.com/@eslint/js/-/js-8.57.1.tgz#de633db3ec2ef6a3c89e2f19038063e8a122e2c2"
   integrity sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==
 
-"@faker-js/faker@^10.0.0":
+"@faker-js/faker@^10.0.0", "@faker-js/faker@^10.3.0":
   version "10.5.0"
   resolved "https://registry.yarnpkg.com/@faker-js/faker/-/faker-10.5.0.tgz#d2f6a8c7f08d087ac5f077d6babd0821edf24c03"
   integrity sha512-bsxD8WLS5lIj7aaoCx1YJkktqYj5vlBUE6HWzu2Q51ksrGJ0H737ECCKlFU7Yf8Br45z9t99frBp/J7kzbMPAg==
@@ -1052,12 +1052,14 @@
   resolved "https://registry.yarnpkg.com/@istanbuljs/schema/-/schema-0.1.6.tgz#8dc9afa2ac1506cb1a58f89940f1c124446c8df3"
   integrity sha512-+Sg6GCR/wy1oSmQDFq4LQDAhm3ETKnorxN+y5nbLULOR3P0c14f2Wurzj3/xqPXtasLFfHd5iRFQ7AJt4KH2cw==
 
-"@jahia/cypress@^7.0.0":
-  version "7.4.0"
-  resolved "https://registry.yarnpkg.com/@jahia/cypress/-/cypress-7.4.0.tgz#6e20a77424dfb29c0ff81d36881f8e9740faf7ac"
-  integrity sha512-SfStNri0884of+JijefySK2XNDO3OKFYOG6d1IV6g0rR7/eyPFFD+QfPQdzFxmf5qSOjNRf8+jRazoVQaAFjrw==
+"@jahia/cypress@^8.2.1":
+  version "8.2.1"
+  resolved "https://registry.yarnpkg.com/@jahia/cypress/-/cypress-8.2.1.tgz#69b76fd7e9f97048867657e4ae8195d48cc24145"
+  integrity sha512-TRDy7LRePjYcnK5pZ61z+C7fspHqQDqMrEFUcsekBHT75nwKfanMU2wy5eMcTbkcvZfwnKpCncg7vOxCfOlfrw==
   dependencies:
     "@apollo/client" "^3.4.9"
+    "@faker-js/faker" "^10.3.0"
+    compare-versions "^6.1.1"
     cypress-real-events "^1.11.0"
     graphql "^15.5.0"
     graphql-tag "^2.11.0"

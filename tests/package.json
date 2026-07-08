@@ -9,7 +9,7 @@
     "@cypress/code-coverage": "^4.0.3",
     "@cypress/webpack-preprocessor": "^5.9.1",
     "@faker-js/faker": "^10.0.0",
-    "@jahia/cypress": "^7.0.0",
+    "@jahia/cypress": "^8.2.1",
     "@jahia/eslint-config": "^2.1.2",
     "@typescript-eslint/eslint-plugin": "^5.2.0",
     "@typescript-eslint/parser": "^5.2.0",

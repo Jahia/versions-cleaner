@@ -5225,6 +5225,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"graphql-tag@npm:^2.12.7":
+  version: 2.12.7
+  resolution: "graphql-tag@npm:2.12.7"
+  dependencies:
+    tslib: ^2.1.0
+  peerDependencies:
+    graphql: ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
+  checksum: 8/0cccd9003cde18d266feb1f5a4fe5edc836276d4fbc9daae319a31b141566b37fea1e78ab4192934ca3bbc70eea343108ec3b174e700c60cf63a0aa2f2327065
+  languageName: node
+  linkType: hard
+
 "graphql@npm:^15.10.1, graphql@npm:^15.5.0":
   version: 15.10.2
   resolution: "graphql@npm:15.10.2"
@@ -8807,7 +8818,7 @@ __metadata:
     eslint-plugin-react: ^7.32.2
     eslint-plugin-react-hooks: ^4.6.0
     graphql: ^15.10.1
-    graphql-tag: ^2.12.6
+    graphql-tag: ^2.12.7
     jahia-reporter: ^0.4.2
     mocha: ^10.0.0
     mocha-junit-reporter: ^2.2.0

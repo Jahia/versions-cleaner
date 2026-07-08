@@ -36,7 +36,7 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "graphql": "^15.10.1",
-    "graphql-tag": "^2.12.6",
+    "graphql-tag": "^2.12.7",
     "jahia-reporter": "^0.4.2",
     "mocha": "^10.0.0",
     "mocha-junit-reporter": "^2.2.0",

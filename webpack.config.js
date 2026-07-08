@@ -59,7 +59,7 @@ module.exports = (env, argv) => {
                         'style-loader',
                         {
                             loader: 'css-loader',
-                            options: {modules: {localIdentName: '[local]'}}
+                            options: {modules: {localIdentName: '[local]', namedExport: false, exportLocalsConvention: 'as-is'}}
                         },
                         'sass-loader'
                     ]

@@ -32,6 +32,8 @@ public class CleanerContext {
     private final AtomicBoolean interruptionHandler;
     private boolean reindexDefaultWorkspace = Boolean.FALSE;
     private boolean checkIntegrity = Boolean.FALSE;
+    // U6: whether an integrity check is allowed to MUTATE/REMOVE content. Opt-in (report-only by default).
+    private boolean fixIntegrity = Boolean.FALSE;
     private long nbVersionsToKeep = -1L;
     private long maxExecutionTimeInMs = -1L;
     private boolean deleteOrphanedVersions = Boolean.FALSE;
@@ -91,6 +93,7 @@ public class CleanerContext {
         final StringBuilder sb = new StringBuilder();
         sb.append("reindexDefaultWorkspace: ").append(reindexDefaultWorkspace).append(", ");
         sb.append("checkIntegrity: ").append(checkIntegrity).append(", ");
+        sb.append("fixIntegrity: ").append(fixIntegrity).append(", ");
         sb.append("nbVersionsToKeep: ").append(nbVersionsToKeep).append(", ");
         sb.append("maxExecutionTimeInMs: ").append(maxExecutionTimeInMs).append(", ");
         sb.append("deleteOrphanedVersions: ").append(deleteOrphanedVersions).append(", ");
@@ -215,6 +218,15 @@ public class CleanerContext {
 
     public CleanerContext setCheckIntegrity(boolean checkIntegrity) {
         this.checkIntegrity = checkIntegrity;
+        return this;
+    }
+
+    public boolean isFixIntegrity() {
+        return fixIntegrity;
+    }
+
+    public CleanerContext setFixIntegrity(boolean fixIntegrity) {
+        this.fixIntegrity = fixIntegrity;
         return this;
     }
 

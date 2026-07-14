@@ -88,6 +88,9 @@ public class CleanCommand implements Action {
     @Option(name = "-c", aliases = "--check-integrity", description = "Check integrity of the versions")
     private Boolean checkIntegrity = Boolean.FALSE;
 
+    @Option(name = "-fix", aliases = "--fix-integrity", description = "When checking integrity, actually FIX (null dangling references / remove offending nodes) instead of only reporting. Opt-in: report-only by default")
+    private Boolean fixIntegrity = Boolean.FALSE;
+
     @Option(name = "-n", aliases = "--nb-versions-to-keep", description = "Number of versions to keep")
     private Long nbVersionsToKeep = -1L;
 
@@ -117,6 +120,7 @@ public class CleanCommand implements Action {
         final CleanerContext context = new CleanerContext()
                 .setReindexDefaultWorkspace(reindexDefaultWorkspace)
                 .setCheckIntegrity(checkIntegrity)
+                .setFixIntegrity(fixIntegrity)
                 .setNbVersionsToKeep(nbVersionsToKeep)
                 .setMaxExecutionTimeInMs(maxExecutionTimeInMs)
                 .setDeleteOrphanedVersions(deleteOrphanedVersions)
@@ -245,7 +249,11 @@ public class CleanCommand implements Action {
         if (node.isNodeType(Constants.NT_VERSIONHISTORY)) {
             if (!context.canProcess(node)) return;
             logger.debug("Processing {}", path);
-            checkNodeIntegrity(context.getEditSession(), node, true, true, context);
+            // U6 fix: the integrity fix is now OPT-IN. A checkIntegrity run reports dangling references
+            // by default (fix=false) and only mutates/removes content when fixIntegrity is explicitly set.
+            // Previously `fix` was hardcoded to true, so a mere "check" silently nulled references and
+            // removed nodes (see fixInvalidPropertyReference / fixInvalidNodeReference).
+            checkNodeIntegrity(context.getEditSession(), node, context.isFixIntegrity(), true, context);
             if (isOrphanedHistory(node, context)) {
                 deleteOrphanedHistory((VersionHistory) node, context);
             } else {
@@ -321,6 +329,16 @@ public class CleanCommand implements Action {
 
         if (needsToInterrupt(context)) return;
 
+        // U2 fix: apply the SAME reference-count guard that the trim path enforces per-version
+        // (removeOneVersion: skip when getReferences().getSize() > 0, CleanCommand.java ~:474) to the
+        // force-purge path. purgeVersions() force-deletes the WHOLE orphaned history without any
+        // reference check, so a version that is still referenced elsewhere in version storage would be
+        // destroyed. Refuse to force-purge a history any of whose versions are still referenced.
+        if (hasReferencedVersion(vh, context)) {
+            logger.warn("Skipping force-purge of orphaned version history {} because at least one of its versions is still referenced elsewhere in version storage", vh.getPath());
+            return;
+        }
+
         final NodeId id = NodeId.valueOf(vh.getIdentifier());
         final SessionImpl providerSession = (SessionImpl) context.getEditSession().getProviderSession(context.getEditSession().getNode("/").getProvider());
         final InternalVersionManager vm = providerSession.getInternalVersionManager();
@@ -373,6 +391,26 @@ public class CleanCommand implements Action {
 
     private static long getVersionsCount(VersionHistory vh, RangeIterator versionIterator, CleanerContext context) throws RepositoryException {
         return context.isUseVersioningApi() || !vh.hasNode("jcr:versionLabels") ? versionIterator.getSize() : versionIterator.getSize() - 1;
+    }
+
+    /**
+     * U2 purge-guard predicate: returns {@code true} if any non-root version in the given history is
+     * still referenced (mirrors the per-version guard the trim path enforces in {@code removeOneVersion}).
+     * Package-private so the guard can be unit-tested against a mocked history.
+     */
+    static boolean hasReferencedVersion(VersionHistory vh, CleanerContext context) throws RepositoryException {
+        final RangeIterator versionIterator = getVersionsIterator(vh, context);
+        while (versionIterator.hasNext()) {
+            final Object item = versionIterator.next();
+            if (!(item instanceof Node)) continue;
+            final Node version = (Node) item;
+            if (!version.isNodeType(JcrConstants.NT_VERSION)) continue;
+            if (JcrConstants.JCR_ROOTVERSION.equals(version.getName())) continue;
+            if (version.getReferences().getSize() > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void keepLastNVersions(VersionHistory vh, CleanerContext context) {
@@ -536,7 +574,9 @@ public class CleanCommand implements Action {
         }
     }
 
-    private static void checkNodeIntegrity(Session session, Node node,
+    // Package-private (not private) so the U6 opt-in fix guarantee (fix=false must not mutate content)
+    // can be unit-tested in isolation. Behaviour unchanged; only the visibility is widened.
+    static void checkNodeIntegrity(Session session, Node node,
                                            boolean fix, boolean referencesCheck, CleanerContext context) throws RepositoryException {
         if (!context.isCheckIntegrity()) return;
 

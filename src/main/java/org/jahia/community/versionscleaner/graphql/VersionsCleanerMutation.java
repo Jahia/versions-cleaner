@@ -45,8 +45,12 @@ public class VersionsCleanerMutation {
             Boolean deleteOrphanedVersions,
 
             @GraphQLName("checkIntegrity")
-            @GraphQLDescription("Check and fix integrity of version references")
+            @GraphQLDescription("Report integrity problems of version references. Report-only unless checkIntegrityFix is also true.")
             Boolean checkIntegrity,
+
+            @GraphQLName("checkIntegrityFix")
+            @GraphQLDescription("When checkIntegrity is true, actually FIX problems (null dangling references / remove offending nodes) instead of only reporting. Opt-in; defaults to false (report-only).")
+            Boolean checkIntegrityFix,
 
             @GraphQLName("reindexDefaultWorkspace")
             @GraphQLDescription("Reindex default workspace before cleaning")
@@ -78,6 +82,7 @@ public class VersionsCleanerMutation {
                 .setNbVersionsToKeep(nbVersionsToKeep != null ? nbVersionsToKeep : -1L)
                 .setDeleteOrphanedVersions(deleteOrphanedVersions != null ? deleteOrphanedVersions : Boolean.FALSE)
                 .setCheckIntegrity(checkIntegrity != null ? checkIntegrity : Boolean.FALSE)
+                .setFixIntegrity(checkIntegrityFix != null ? checkIntegrityFix : Boolean.FALSE)
                 .setReindexDefaultWorkspace(reindexDefaultWorkspace != null ? reindexDefaultWorkspace : Boolean.FALSE)
                 .setMaxExecutionTimeInMs(maxExecutionTimeInMs != null ? maxExecutionTimeInMs : 0L)
                 .setPauseDuration(pauseDuration != null ? pauseDuration : 0L)

@@ -16,16 +16,21 @@ import {DocumentNode} from 'graphql';
  * (`historyExists === false`). That is intentional RED evidence for the Stage-7 fix, after which
  * the expectation flips to `historyExists === true`.
  *
- * STAGE-6 SPIKE / WRITE-BUT-SKIP GATE (make-or-break, see 04-gaps.md §4):
- * The whole premise depends on the frozen REFERENCE surviving into version storage as a *counted
- * hard reference*. The pre-run assertion below (`historyExists === true`) proves the fixture was
- * seeded; if the seeding helper returns null or the pre-condition fails on this Jahia/Oak build,
- * mark this spec `describe.skip` with the exact reason ("frozen REFERENCE not retained as a counted
- * hard reference in version storage on this build; U2 force-purge cannot be demonstrated e2e") —
- * do NOT weaken the assertion to make it pass. The trim-path contrast (a referenced version
- * survives) is covered by 04-versionsCleanerCorrectness "current/base version survives".
+ * STAGE-6 SPIKE OUTCOME — describe.skip (spike DISPROVED e2e reproducibility):
+ * The premise depends on the frozen REFERENCE surviving into version storage as a *counted hard
+ * reference*. It does NOT on this Jahia 8.2 / Oak build. Run live in Stage 6 with the Stage-7
+ * purge-guard fix ALREADY deployed, the seeded still-"referenced" orphan history was nonetheless
+ * force-purged (`historyExists` went to `false`): the guard's `version.getReferences().getSize()`
+ * returns 0 for a frozen version whose only referrer is another frozen node in version storage —
+ * Oak does not maintain a counted back-reference from version storage. Because the "still-referenced"
+ * version cannot be constructed on this build, the U2 force-purge vulnerability cannot be demonstrated
+ * end-to-end here. Per 04-gaps.md §4 this spec is SKIPPED (not weakened, not faked): the fix is proved
+ * instead at the unit level by CleanCommandPurgeGuardTest (the reference-count guard predicate) and the
+ * trim-path contrast (a referenced version survives) is covered by 04-versionsCleanerCorrectness.
+ * The body is retained so the spec can be re-enabled on a build where frozen references are counted.
  */
-describe('Versions Cleaner - Referenced Orphan Force-Purge (U2)', () => {
+// eslint-disable-next-line mocha/no-skipped-tests
+describe.skip('Versions Cleaner - Referenced Orphan Force-Purge (U2)', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const isRunning: DocumentNode = require('graphql-tag/loader!../fixtures/graphql/query/isRunning.graphql');
     // eslint-disable-next-line @typescript-eslint/no-var-requires

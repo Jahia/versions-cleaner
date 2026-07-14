@@ -4,7 +4,7 @@ Jahia OSGi module that scans the JCR version storage tree to delete old versions
 
 ## Key Facts
 
-- **artifactId**: `versions-cleaner` | **version**: `2.3.2-SNAPSHOT`
+- **artifactId**: `versions-cleaner` | **version**: `2.3.4-SNAPSHOT` (authoritative source is `pom.xml`; keep `package.json` in sync via the `sync-pom` npm script — they have drifted before)
 - **Java package**: `org.jahia.community.versionscleaner`
 - **jahia-depends**: `default,graphql-dxm-provider`
 - No Blueprint/Spring — pure OSGi DS
@@ -37,7 +37,8 @@ Jahia OSGi module that scans the JCR version storage tree to delete old versions
 ## OSGi Config
 
 PID: `org.jahia.community.versionscleaner`  
-File: `digital-factory-config/jahia/org.jahia.community.versionscleaner.cfg`
+Shipped default: `src/main/resources/META-INF/configurations/org.jahia.community.versionscleaner.cfg`
+(line 1 MUST be `# default configuration - won't be overridden`). Runtime file: `<karaf.home>/etc/org.jahia.community.versionscleaner.cfg`.
 
 Key properties: `disabled` (true), `cronExpression` (0 30 1 * * ?), `nbVersionsToKeep` (2), `deleteOrphanedVersions` (false), `maxExecutionTimeInMs` (60000).
 
@@ -45,7 +46,16 @@ Config changes require module restart to reschedule the cron job.
 
 ## GraphQL API
 
-All operations require `admin` permission.
+All operations are gated by the fine-grained `versionsCleanerAdmin` permission (shipped via the
+`versions-cleaner-administrator` role in `roles.xml`, defined in `permissions.xml`), resolved per field
+on the `/` node — NOT a generic "admin" flag. The Karaf `versions-cleaner:run` command and the
+`versions-cleaner.interrupt` system property deliberately bypass this permission (they assume shell/JVM
+access, a higher privilege); `CleanCommandKarafGateTest` is a tripwire on that asymmetry.
+
+**The schema is namespaced**: operations live under a single `versionsCleaner` container on `Query`/`Mutation`
+(e.g. `mutation { versionsCleaner { run(...) } }`), read as `data.versionsCleaner.<op>`. They are NOT flat
+root fields — the `versionsCleanerRun` / `versionsCleanerIsRunning` names used below are the GraphQLName of
+the nested fields (`run`, `isRunning`, …) within that container, not top-level fields.
 
 ### Queries
 

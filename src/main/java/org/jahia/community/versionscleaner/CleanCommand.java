@@ -261,7 +261,9 @@ public class CleanCommand implements Action {
         }
     }
 
-    private static boolean isOrphanedHistory(JCRNodeWrapper versionHistory, CleanerContext context) throws RepositoryException {
+    // Package-private (not private) so the orphan-detection logic can be unit-tested in isolation.
+    // Behaviour is unchanged; only the visibility is widened. See CleanCommandOrphanTest.
+    static boolean isOrphanedHistory(JCRNodeWrapper versionHistory, CleanerContext context) throws RepositoryException {
         final JCRNodeIteratorWrapper it = versionHistory.getNodes();
         while (it.hasNext()) {
             final JCRNodeWrapper node = (JCRNodeWrapper) it.next();
@@ -276,7 +278,9 @@ public class CleanCommand implements Action {
         return false;
     }
 
-    private static boolean isUuidOrphaned(String uuid, CleanerContext context) throws RepositoryException {
+    // Package-private (not private) so the both-workspace orphan criterion and the
+    // fail-safe RepositoryException-propagation guard can be unit-tested. Behaviour unchanged.
+    static boolean isUuidOrphaned(String uuid, CleanerContext context) throws RepositoryException {
         try {
             context.getEditSession().getNodeByIdentifier(uuid);
             return false;

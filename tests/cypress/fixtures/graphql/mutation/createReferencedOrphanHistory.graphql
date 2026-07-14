@@ -1,0 +1,5 @@
+mutation createReferencedOrphanHistory($name: String) {
+    versionsCleaner {
+        createReferencedOrphanHistory(name: $name)
+    }
+}

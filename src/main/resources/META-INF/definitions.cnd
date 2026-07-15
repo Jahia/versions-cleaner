@@ -1,2 +1,10 @@
 <jnt = 'http://www.jahia.org/jahia/nt/1.0'>
 <jmix = 'http://www.jahia.org/jahia/mix/1.0'>
+<vc = 'http://www.jahia.org/community/versionscleaner/1.0'>
+
+// Test-only versionable content type carrying a HARD (counted) reference property.
+// Used by the createReferencedOrphanHistory GraphQL test helper to build a version
+// history that is orphaned yet still referenced from version storage, so the U2
+// force-purge behaviour can be exercised end-to-end by Cypress.
+[jnt:vcTestReferenceHolder] > jnt:contentList
+ - vc:hardRef (reference)

@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jcr.RepositoryException;
+import javax.jcr.Value;
 import javax.jcr.version.VersionManager;
 import java.util.Dictionary;
 import java.util.Hashtable;
@@ -44,8 +45,12 @@ public class VersionsCleanerMutation {
             Boolean deleteOrphanedVersions,
 
             @GraphQLName("checkIntegrity")
-            @GraphQLDescription("Check and fix integrity of version references")
+            @GraphQLDescription("Report integrity problems of version references. Report-only unless checkIntegrityFix is also true.")
             Boolean checkIntegrity,
+
+            @GraphQLName("checkIntegrityFix")
+            @GraphQLDescription("When checkIntegrity is true, actually FIX problems (null dangling references / remove offending nodes) instead of only reporting. Opt-in; defaults to false (report-only).")
+            Boolean checkIntegrityFix,
 
             @GraphQLName("reindexDefaultWorkspace")
             @GraphQLDescription("Reindex default workspace before cleaning")
@@ -77,6 +82,7 @@ public class VersionsCleanerMutation {
                 .setNbVersionsToKeep(nbVersionsToKeep != null ? nbVersionsToKeep : -1L)
                 .setDeleteOrphanedVersions(deleteOrphanedVersions != null ? deleteOrphanedVersions : Boolean.FALSE)
                 .setCheckIntegrity(checkIntegrity != null ? checkIntegrity : Boolean.FALSE)
+                .setFixIntegrity(checkIntegrityFix != null ? checkIntegrityFix : Boolean.FALSE)
                 .setReindexDefaultWorkspace(reindexDefaultWorkspace != null ? reindexDefaultWorkspace : Boolean.FALSE)
                 .setMaxExecutionTimeInMs(maxExecutionTimeInMs != null ? maxExecutionTimeInMs : 0L)
                 .setPauseDuration(pauseDuration != null ? pauseDuration : 0L)
@@ -146,6 +152,77 @@ public class VersionsCleanerMutation {
             LOGGER.error("Failed to create test versions", e);
             return null;
         }
+    }
+
+    @GraphQLField
+    @GraphQLName("createReferencedOrphanHistory")
+    @GraphQLDescription("Test helper: creates an orphaned version history (node A) whose frozen versions are"
+            + " still referenced by a second node (B) via a hard REFERENCE captured in version storage."
+            + " Node A is created, referenced by B, both are checked in, then A is removed so its history"
+            + " becomes orphaned (frozen UUID absent from edit+live) yet still referenced. Returns A's"
+            + " version history UUID, or null on error. Intended for automated tests only.")
+    @GraphQLRequiresPermission("versionsCleanerAdmin")
+    public String createReferencedOrphanHistory(
+            @GraphQLName("name")
+            @GraphQLDescription("Suffix appended to the test node names. Node A is 'vc-test-<name>',"
+                    + " the referencing node B is 'vc-test-<name>-ref'.")
+            String name) {
+
+        try {
+            final JCRSessionWrapper session = JCRSessionFactory.getInstance()
+                    .getCurrentSystemSession(Constants.EDIT_WORKSPACE, null, null);
+            final JCRNodeWrapper parent = session.getNode(TEST_NODE_PARENT);
+            final VersionManager vm = session.getWorkspace().getVersionManager();
+
+            final String nodeNameA = TEST_NODE_PREFIX + name;
+            final String nodeNameB = TEST_NODE_PREFIX + name + "-ref";
+            removeIfPresent(session, vm, parent, nodeNameA);
+            removeIfPresent(session, vm, parent, nodeNameB);
+
+            // Node A: the future orphan. Create and check in once so it has a version history.
+            final JCRNodeWrapper nodeA = parent.addNode(nodeNameA, "jnt:contentList");
+            session.save();
+            final String pathA = nodeA.getPath();
+            vm.checkin(pathA);
+            final String historyIdA = vm.getVersionHistory(pathA).getIdentifier();
+
+            // Node B: a versionable holder carrying a HARD reference (weak=false) to A via the
+            // vc:hardRef property (see definitions.cnd). Checked in so the reference value is
+            // captured into B's frozen node in version storage.
+            final JCRNodeWrapper nodeB = parent.addNode(nodeNameB, "jnt:vcTestReferenceHolder");
+            final Value hardRef = session.getValueFactory().createValue(nodeA, false);
+            nodeB.setProperty("vc:hardRef", hardRef);
+            session.save();
+            vm.checkin(nodeB.getPath());
+
+            // Remove A so its versionable UUID is absent from edit (and it was never published to live),
+            // making A's version history orphaned while B's frozen node still references A's frozen versions.
+            final JCRNodeWrapper toRemove = parent.getNode(nodeNameA);
+            if (!vm.isCheckedOut(toRemove.getPath())) {
+                vm.checkout(toRemove.getPath());
+            }
+            toRemove.remove();
+            session.save();
+
+            return historyIdA;
+        } catch (RepositoryException e) {
+            LOGGER.error("Failed to create referenced orphan history", e);
+            return null;
+        }
+    }
+
+    private void removeIfPresent(JCRSessionWrapper session, VersionManager vm, JCRNodeWrapper parent, String nodeName)
+            throws RepositoryException {
+        if (!parent.hasNode(nodeName)) {
+            return;
+        }
+        final JCRNodeWrapper existing = parent.getNode(nodeName);
+        final String existingPath = existing.getPath();
+        if (!vm.isCheckedOut(existingPath)) {
+            vm.checkout(existingPath);
+        }
+        existing.remove();
+        session.save();
     }
 
     @GraphQLField

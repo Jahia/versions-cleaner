@@ -6028,9 +6028,9 @@ sync-rpc@^1.2.1:
     get-port "^3.1.0"
 
 systeminformation@^5.31.1:
-  version "5.31.14"
-  resolved "https://registry.yarnpkg.com/systeminformation/-/systeminformation-5.31.14.tgz#78af4431a7868f93c94d9fd0e54e6c8735b721dc"
-  integrity sha512-nefRpMCsAI4m71/6JHH//KPaP/d5nTuRVxEtQ7N7SlBrX18DAcC+5Z1JKZYeN9Iw49qMx95BTo/gBMk3Y2H6+g==
+  version "5.33.19"
+  resolved "https://registry.yarnpkg.com/systeminformation/-/systeminformation-5.33.19.tgz#b956e75ff6d7bdc6019ca4fc13c78b01f47cc415"
+  integrity sha512-Zm7wGeCG7PqfvzegMJIzrxICopWqYCeLATVmvxOOci1isLcNVKgY4Fr0hhYQzvc7cgtK3377jQVChTFAnznOiA==
 
 tapable@^2.3.0, tapable@^2.3.3:
   version "2.3.3"

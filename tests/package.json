@@ -65,6 +65,11 @@
   "author": "",
   "license": "MIT",
   "resolutions": {
+    "**/mocha/glob": "^14.0.3",
+    "**/mocha/minimatch": "^11.0.1",
+    "**/nyc/glob": "^14.0.3",
+    "**/nyc/test-exclude/glob": "^14.0.3",
+    "**/nyc/test-exclude/minimatch": "^11.0.1",
     "@babel/plugin-transform-modules-systemjs": "^7.29.4",
     "axios": "^1.21.0",
     "baseline-browser-mapping": "^2.11.22",

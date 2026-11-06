@@ -4,6 +4,16 @@
 # Note: security updates (triggered by vulnerability alerts) run regardless of
 # this file. These entries enable scheduled *version* updates and let Dependabot
 # open lockfile-only PRs for each manifest/lockfile pair in this repo.
+#
+# Ignore policy:
+# - Module Federation shared libraries (@jahia/*, @apollo/*, react, react-dom,
+#   react-i18next, i18next, graphql, graphql-tag, redux, react-redux) must match
+#   what Jahia provides at runtime: no major bumps.
+# - org.jahia.* / platform-provided Maven deps (graphql-java, graphql-java-annotations,
+#   graphql-java-servlet, Karaf shell, org.osgi.*) define the target Jahia version
+#   and are provided by the platform: never bumped by Dependabot.
+# - @babel/* majors (Babel 8 needs Node >= 22.18 + plugin migration), eslint majors
+#   (v10 flat config; @jahia/eslint-config expects 8), typescript majors.
 
 version: 2
 updates:
@@ -13,13 +23,70 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "@jahia/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@apollo/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-i18next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "i18next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "graphql"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "graphql-tag"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "redux"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-redux"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
-  # Cypress end-to-end tests (Yarn Berry)
+  # Cypress end-to-end tests (Yarn Classic)
   - package-ecosystem: "npm"
     directory: "/tests"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      npm-tests-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "cypress"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@jahia/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@apollo/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "graphql"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "graphql-tag"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "mocha"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # eslint-plugin-n >= 18 needs typescript >= 5 (tests pin typescript 4)
+      - dependency-name: "eslint-plugin-n"
+        update-types: ["version-update:semver-major"]
 
   # Maven module packaging (pom.xml)
   - package-ecosystem: "maven"
@@ -27,9 +94,25 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      maven-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "org.jahia.*"
+      - dependency-name: "org.jahia.modules:*"
+      - dependency-name: "org.osgi:*"
+      - dependency-name: "com.graphql-java:*"
+      - dependency-name: "com.graphql-java-kickstart:*"
+      - dependency-name: "io.github.graphql-java:*"
+      - dependency-name: "org.apache.karaf*"
 
   # Keep GitHub Actions workflows up to date
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

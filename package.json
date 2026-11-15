@@ -28,7 +28,7 @@
     "@jahia/moonstone": "^2.20.3",
     "@jahia/ui-extender": "^1.1.0",
     "graphql": "^15.11.0",
-    "i18next": "^26.7.1",
+    "i18next": "^26.7.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.0.0"
@@ -53,7 +53,7 @@
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@babel/plugin-syntax-dynamic-import": "^7.8.3",
-    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-env": "^7.29.14",
     "@babel/preset-react": "^7.29.7",
     "@cyclonedx/webpack-plugin": "^5.3.3",
     "@jahia/eslint-config": "2.2.0",
@@ -68,12 +68,12 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "file-loader": "^6.2.0",
     "rimraf": "^6.1.4",
-    "sass": "^1.107.1",
+    "sass": "^1.108.2",
     "sass-loader": "^17.1.0",
     "style-loader": "^4.0.0",
     "sync-pom-version-to-package": "^1.6.1",
     "webpack": "^5.108.4",
-    "webpack-bundle-analyzer": "^5.4.1",
+    "webpack-bundle-analyzer": "^5.4.2",
     "webpack-cli": "^7.2.1"
   }
 }

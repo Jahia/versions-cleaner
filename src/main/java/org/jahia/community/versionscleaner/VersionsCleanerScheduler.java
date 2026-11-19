@@ -47,6 +47,7 @@ public class VersionsCleanerScheduler {
         if (schedulerService.getAllJobs(jobDetail.getGroup()).isEmpty()) {
             final JobDataMap map = jobDetail.getJobDataMap();
             map.put("reindexDefaultWorkspace", config.isReindexDefaultWorkspace());
+            map.put("forceConsistencyCheck", config.isForceConsistencyCheck());
             map.put("checkIntegrity", config.isCheckIntegrity());
             map.put("nbVersionsToKeep", config.getNbVersionsToKeep());
             map.put("maxExecutionTimeInMs", config.getMaxExecutionTimeInMs());

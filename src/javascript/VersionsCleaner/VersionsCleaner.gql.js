@@ -14,6 +14,7 @@ export const RUN_CLEANER = gql`
         $deleteOrphanedVersions: Boolean
         $checkIntegrity: Boolean
         $reindexDefaultWorkspace: Boolean
+        $forceConsistencyCheck: Boolean
         $maxExecutionTimeInMs: Long
         $pauseDuration: Long
         $subtreePath: String
@@ -25,6 +26,7 @@ export const RUN_CLEANER = gql`
                 deleteOrphanedVersions: $deleteOrphanedVersions
                 checkIntegrity: $checkIntegrity
                 reindexDefaultWorkspace: $reindexDefaultWorkspace
+                forceConsistencyCheck: $forceConsistencyCheck
                 maxExecutionTimeInMs: $maxExecutionTimeInMs
                 pauseDuration: $pauseDuration
                 subtreePath: $subtreePath
@@ -44,6 +46,7 @@ export const GET_CONFIG = gql`
                 deleteOrphanedVersions
                 checkIntegrity
                 reindexDefaultWorkspace
+                forceConsistencyCheck
                 maxExecutionTimeInMs
             }
         }
@@ -58,6 +61,7 @@ export const SAVE_CONFIG = gql`
         $deleteOrphanedVersions: Boolean
         $checkIntegrity: Boolean
         $reindexDefaultWorkspace: Boolean
+        $forceConsistencyCheck: Boolean
         $maxExecutionTimeInMs: Long
     ) {
         versionsCleaner {
@@ -68,6 +72,7 @@ export const SAVE_CONFIG = gql`
                 deleteOrphanedVersions: $deleteOrphanedVersions
                 checkIntegrity: $checkIntegrity
                 reindexDefaultWorkspace: $reindexDefaultWorkspace
+                forceConsistencyCheck: $forceConsistencyCheck
                 maxExecutionTimeInMs: $maxExecutionTimeInMs
             )
         }

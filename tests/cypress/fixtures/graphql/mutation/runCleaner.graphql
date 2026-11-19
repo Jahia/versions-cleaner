@@ -3,6 +3,7 @@ mutation runCleaner(
     $deleteOrphanedVersions: Boolean
     $checkIntegrity: Boolean
     $reindexDefaultWorkspace: Boolean
+    $forceConsistencyCheck: Boolean
     $maxExecutionTimeInMs: Long
     $pauseDuration: Long
     $subtreePath: String
@@ -14,6 +15,7 @@ mutation runCleaner(
             deleteOrphanedVersions: $deleteOrphanedVersions
             checkIntegrity: $checkIntegrity
             reindexDefaultWorkspace: $reindexDefaultWorkspace
+            forceConsistencyCheck: $forceConsistencyCheck
             maxExecutionTimeInMs: $maxExecutionTimeInMs
             pauseDuration: $pauseDuration
             subtreePath: $subtreePath

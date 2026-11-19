@@ -71,6 +71,7 @@ public class VersionsCleanerQuery {
                 config.isDeleteOrphanedVersions(),
                 config.isCheckIntegrity(),
                 config.isReindexDefaultWorkspace(),
+                config.isForceConsistencyCheck(),
                 config.getMaxExecutionTimeInMs()
         );
     }
@@ -85,17 +86,20 @@ public class VersionsCleanerQuery {
         private final boolean deleteOrphanedVersions;
         private final boolean checkIntegrity;
         private final boolean reindexDefaultWorkspace;
+        private final boolean forceConsistencyCheck;
         private final long maxExecutionTimeInMs;
 
+        @SuppressWarnings("java:S107")
         public GqlVersionsCleanerConfig(boolean disabled, String cronExpression, long nbVersionsToKeep,
                 boolean deleteOrphanedVersions, boolean checkIntegrity,
-                boolean reindexDefaultWorkspace, long maxExecutionTimeInMs) {
+                boolean reindexDefaultWorkspace, boolean forceConsistencyCheck, long maxExecutionTimeInMs) {
             this.disabled = disabled;
             this.cronExpression = cronExpression;
             this.nbVersionsToKeep = nbVersionsToKeep;
             this.deleteOrphanedVersions = deleteOrphanedVersions;
             this.checkIntegrity = checkIntegrity;
             this.reindexDefaultWorkspace = reindexDefaultWorkspace;
+            this.forceConsistencyCheck = forceConsistencyCheck;
             this.maxExecutionTimeInMs = maxExecutionTimeInMs;
         }
 
@@ -107,6 +111,7 @@ public class VersionsCleanerQuery {
                     VersionsCleanerConfig.DEFAULT_DELETE_ORPHANED_VERSIONS,
                     VersionsCleanerConfig.DEFAULT_CHECK_INTEGRITY,
                     VersionsCleanerConfig.DEFAULT_REINDEX_DEFAULT_WORKSPACE,
+                    VersionsCleanerConfig.DEFAULT_FORCE_CONSISTENCY_CHECK,
                     VersionsCleanerConfig.DEFAULT_MAX_EXECUTION_TIME_IN_MS
             );
         }
@@ -151,6 +156,13 @@ public class VersionsCleanerQuery {
         @GraphQLDescription("Whether to reindex the default workspace before cleaning")
         public boolean isReindexDefaultWorkspace() {
             return reindexDefaultWorkspace;
+        }
+
+        @GraphQLField
+        @GraphQLName("forceConsistencyCheck")
+        @GraphQLDescription("Whether to run a consistency check of the search index after the reindexing")
+        public boolean isForceConsistencyCheck() {
+            return forceConsistencyCheck;
         }
 
         @GraphQLField

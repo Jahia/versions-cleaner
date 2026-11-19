@@ -17,11 +17,13 @@ public class VersionsCleanerConfig implements ManagedService {
     public static final boolean DEFAULT_DELETE_ORPHANED_VERSIONS = false;
     public static final boolean DEFAULT_CHECK_INTEGRITY = false;
     public static final boolean DEFAULT_REINDEX_DEFAULT_WORKSPACE = false;
+    public static final boolean DEFAULT_FORCE_CONSISTENCY_CHECK = false;
     public static final long DEFAULT_MAX_EXECUTION_TIME_IN_MS = 60000L;
 
     private boolean disabled = DEFAULT_DISABLED;
     private String cronExpression = DEFAULT_CRON_EXPRESSION;
     private boolean reindexDefaultWorkspace = DEFAULT_REINDEX_DEFAULT_WORKSPACE;
+    private boolean forceConsistencyCheck = DEFAULT_FORCE_CONSISTENCY_CHECK;
     private boolean checkIntegrity = DEFAULT_CHECK_INTEGRITY;
     private long nbVersionsToKeep = DEFAULT_NB_VERSIONS_TO_KEEP;
     private long maxExecutionTimeInMs = DEFAULT_MAX_EXECUTION_TIME_IN_MS;
@@ -40,6 +42,9 @@ public class VersionsCleanerConfig implements ManagedService {
         }
         if (props.get("reindexDefaultWorkspace") != null) {
             reindexDefaultWorkspace = Boolean.parseBoolean(String.valueOf(props.get("reindexDefaultWorkspace")));
+        }
+        if (props.get("forceConsistencyCheck") != null) {
+            forceConsistencyCheck = Boolean.parseBoolean(String.valueOf(props.get("forceConsistencyCheck")));
         }
         if (props.get("checkIntegrity") != null) {
             checkIntegrity = Boolean.parseBoolean(String.valueOf(props.get("checkIntegrity")));
@@ -65,6 +70,10 @@ public class VersionsCleanerConfig implements ManagedService {
 
     public boolean isReindexDefaultWorkspace() {
         return reindexDefaultWorkspace;
+    }
+
+    public boolean isForceConsistencyCheck() {
+        return forceConsistencyCheck;
     }
 
     public boolean isCheckIntegrity() {

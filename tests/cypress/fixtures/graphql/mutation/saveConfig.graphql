@@ -5,6 +5,7 @@ mutation saveConfig(
     $deleteOrphanedVersions: Boolean
     $checkIntegrity: Boolean
     $reindexDefaultWorkspace: Boolean
+    $forceConsistencyCheck: Boolean
     $maxExecutionTimeInMs: Long
 ) {
     versionsCleaner {
@@ -15,6 +16,7 @@ mutation saveConfig(
             deleteOrphanedVersions: $deleteOrphanedVersions
             checkIntegrity: $checkIntegrity
             reindexDefaultWorkspace: $reindexDefaultWorkspace
+            forceConsistencyCheck: $forceConsistencyCheck
             maxExecutionTimeInMs: $maxExecutionTimeInMs
         )
     }

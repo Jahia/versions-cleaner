@@ -56,6 +56,10 @@ public class VersionsCleanerMutation {
             @GraphQLDescription("Reindex default workspace before cleaning")
             Boolean reindexDefaultWorkspace,
 
+            @GraphQLName("forceConsistencyCheck")
+            @GraphQLDescription("Run a consistency check of the search index after the reindexing. Ignored unless reindexDefaultWorkspace is true")
+            Boolean forceConsistencyCheck,
+
             @GraphQLName("maxExecutionTimeInMs")
             @GraphQLDescription("Maximum execution time in milliseconds (0 = unlimited)")
             Long maxExecutionTimeInMs,
@@ -84,6 +88,7 @@ public class VersionsCleanerMutation {
                 .setCheckIntegrity(checkIntegrity != null ? checkIntegrity : Boolean.FALSE)
                 .setFixIntegrity(checkIntegrityFix != null ? checkIntegrityFix : Boolean.FALSE)
                 .setReindexDefaultWorkspace(reindexDefaultWorkspace != null ? reindexDefaultWorkspace : Boolean.FALSE)
+                .setForceConsistencyCheck(forceConsistencyCheck != null ? forceConsistencyCheck : Boolean.FALSE)
                 .setMaxExecutionTimeInMs(maxExecutionTimeInMs != null ? maxExecutionTimeInMs : 0L)
                 .setPauseDuration(pauseDuration != null ? pauseDuration : 0L)
                 .setSubtreePath(subtreePath)
@@ -273,6 +278,7 @@ public class VersionsCleanerMutation {
     @GraphQLName("saveConfig")
     @GraphQLDescription("Saves the versions cleaner scheduled job configuration. A module restart is required for schedule changes to take effect.")
     @GraphQLRequiresPermission("versionsCleanerAdmin")
+    @SuppressWarnings("java:S107")
     public Boolean saveConfig(
             @GraphQLName("disabled")
             @GraphQLDescription("Whether the scheduled cleanup job is disabled")
@@ -297,6 +303,10 @@ public class VersionsCleanerMutation {
             @GraphQLName("reindexDefaultWorkspace")
             @GraphQLDescription("Whether to reindex the default workspace before cleaning")
             Boolean reindexDefaultWorkspace,
+
+            @GraphQLName("forceConsistencyCheck")
+            @GraphQLDescription("Whether to run a consistency check of the search index after the reindexing")
+            Boolean forceConsistencyCheck,
 
             @GraphQLName("maxExecutionTimeInMs")
             @GraphQLDescription("Maximum execution time in milliseconds (0 = unlimited)")
@@ -333,6 +343,9 @@ public class VersionsCleanerMutation {
             }
             if (reindexDefaultWorkspace != null) {
                 props.put("reindexDefaultWorkspace", String.valueOf(reindexDefaultWorkspace));
+            }
+            if (forceConsistencyCheck != null) {
+                props.put("forceConsistencyCheck", String.valueOf(forceConsistencyCheck));
             }
             if (maxExecutionTimeInMs != null) {
                 props.put("maxExecutionTimeInMs", String.valueOf(maxExecutionTimeInMs));

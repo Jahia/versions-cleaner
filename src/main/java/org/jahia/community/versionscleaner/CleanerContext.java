@@ -31,6 +31,7 @@ public class CleanerContext {
 
     private final AtomicBoolean interruptionHandler;
     private boolean reindexDefaultWorkspace = Boolean.FALSE;
+    private boolean forceConsistencyCheck = Boolean.FALSE;
     private boolean checkIntegrity = Boolean.FALSE;
     // U6: whether an integrity check is allowed to MUTATE/REMOVE content. Opt-in (report-only by default).
     private boolean fixIntegrity = Boolean.FALSE;
@@ -92,6 +93,7 @@ public class CleanerContext {
     public String printConfigurations() {
         final StringBuilder sb = new StringBuilder();
         sb.append("reindexDefaultWorkspace: ").append(reindexDefaultWorkspace).append(", ");
+        sb.append("forceConsistencyCheck: ").append(forceConsistencyCheck).append(", ");
         sb.append("checkIntegrity: ").append(checkIntegrity).append(", ");
         sb.append("fixIntegrity: ").append(fixIntegrity).append(", ");
         sb.append("nbVersionsToKeep: ").append(nbVersionsToKeep).append(", ");
@@ -209,6 +211,15 @@ public class CleanerContext {
 
     public CleanerContext setReindexDefaultWorkspace(boolean reindexDefaultWorkspace) {
         this.reindexDefaultWorkspace = reindexDefaultWorkspace;
+        return this;
+    }
+
+    public boolean isForceConsistencyCheck() {
+        return forceConsistencyCheck;
+    }
+
+    public CleanerContext setForceConsistencyCheck(boolean forceConsistencyCheck) {
+        this.forceConsistencyCheck = forceConsistencyCheck;
         return this;
     }
 

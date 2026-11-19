@@ -62,4 +62,17 @@ public class CleanerContextTest {
         assertThat(context.getDeletedVersionHistoriesCount()).isEqualTo(1L);
         assertThat(context.getDeletedOrphanVersionHistoriesCount()).isEqualTo(1L);
     }
+
+    @Test
+    public void consistencyCheckIsNotForcedByDefault() {
+        assertThat(new CleanerContext().isForceConsistencyCheck()).isFalse();
+    }
+
+    @Test
+    public void forcedConsistencyCheckIsKeptAndPrinted() {
+        final CleanerContext context = new CleanerContext().setForceConsistencyCheck(true);
+
+        assertThat(context.isForceConsistencyCheck()).isTrue();
+        assertThat(context.printConfigurations()).contains("forceConsistencyCheck: true");
+    }
 }

@@ -85,6 +85,9 @@ public class CleanCommand implements Action {
     @Option(name = "-r", aliases = "--reindex-default-workspace", description = "Reindex default workspace before cleaning")
     private Boolean reindexDefaultWorkspace = Boolean.FALSE;
 
+    @Option(name = "--force-consistency-check", description = "Force a consistency check of the search index after the reindexing of the default workspace. Ignored without -r")
+    private Boolean forceConsistencyCheck = Boolean.FALSE;
+
     @Option(name = "-c", aliases = "--check-integrity", description = "Check integrity of the versions")
     private Boolean checkIntegrity = Boolean.FALSE;
 
@@ -119,6 +122,7 @@ public class CleanCommand implements Action {
     public Object execute() throws RepositoryException {
         final CleanerContext context = new CleanerContext()
                 .setReindexDefaultWorkspace(reindexDefaultWorkspace)
+                .setForceConsistencyCheck(forceConsistencyCheck)
                 .setCheckIntegrity(checkIntegrity)
                 .setFixIntegrity(fixIntegrity)
                 .setNbVersionsToKeep(nbVersionsToKeep)
@@ -184,7 +188,7 @@ public class CleanCommand implements Action {
         context.setLiveSession(JCRSessionFactory.getInstance().getCurrentSystemSession(Constants.LIVE_WORKSPACE, null, null));
 
         if (context.isReindexDefaultWorkspace()) {
-            performReindex();
+            performReindex(context.isForceConsistencyCheck());
         }
 
         if (needsToInterrupt(context)) {
@@ -207,11 +211,29 @@ public class CleanCommand implements Action {
         }
     }
 
-    private static void performReindex() {
+    /**
+     * Schedules the reindexing of the default workspace. The consistency check that can follow the reindexing
+     * may take much longer than the reindexing itself on a large repository, so it runs only on request.
+     */
+    static void scheduleReindexing(ReindexScheduler scheduler, boolean forceConsistencyCheck) throws RepositoryException {
+        scheduler.scheduleReindexing(Constants.EDIT_WORKSPACE, forceConsistencyCheck);
+    }
+
+    /**
+     * Matches {@link JahiaRepositoryImpl#scheduleReindexing(String, boolean)}. A method reference to it resolves
+     * only to this overload, never to {@code scheduleReindexing(String)}, which always forces the consistency check.
+     */
+    @FunctionalInterface
+    interface ReindexScheduler {
+        void scheduleReindexing(String workspaceName, boolean forceConsistencyCheck) throws RepositoryException;
+    }
+
+    private static void performReindex(boolean forceConsistencyCheck) {
         try {
             final long start = System.currentTimeMillis();
-            logger.info("Starting reindexing of default workspace");
-            ((JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository()).scheduleReindexing(Constants.EDIT_WORKSPACE);
+            logger.info("Starting reindexing of default workspace (consistency check: {})", forceConsistencyCheck);
+            final JahiaRepositoryImpl repository = (JahiaRepositoryImpl) ((SpringJackrabbitRepository) JCRSessionFactory.getInstance().getDefaultProvider().getRepository()).getRepository();
+            scheduleReindexing(repository::scheduleReindexing, forceConsistencyCheck);
             final SchedulerService schedulerService = ServicesRegistry.getInstance().getSchedulerService();
             boolean continueChecking = true;
             while (continueChecking) {

@@ -12,6 +12,7 @@ const DEFAULT_FORM = {
     deleteOrphanedVersions: false,
     checkIntegrity: false,
     reindexDefaultWorkspace: false,
+    forceConsistencyCheck: false,
     maxExecutionTimeInMs: 0,
     pauseDuration: 0,
     subtreePath: '',
@@ -69,6 +70,7 @@ export const VersionsCleanerAdmin = () => {
                     deleteOrphanedVersions: form.deleteOrphanedVersions,
                     checkIntegrity: form.checkIntegrity,
                     reindexDefaultWorkspace: form.reindexDefaultWorkspace,
+                    forceConsistencyCheck: form.reindexDefaultWorkspace && form.forceConsistencyCheck,
                     maxExecutionTimeInMs: form.maxExecutionTimeInMs,
                     pauseDuration: form.pauseDuration,
                     subtreePath: form.subtreePath || null,
@@ -243,6 +245,14 @@ export const VersionsCleanerAdmin = () => {
                         label={t('label.reindexDefaultWorkspace')}
                         checked={form.reindexDefaultWorkspace}
                         onChange={(e, v, checked) => handleChange('reindexDefaultWorkspace', checked)}
+                    />
+                    <CheckboxItem
+                        id="vc-force-consistency-check"
+                        label={t('label.forceConsistencyCheck')}
+                        description={t('label.forceConsistencyCheckDescription')}
+                        checked={form.reindexDefaultWorkspace && form.forceConsistencyCheck}
+                        isDisabled={!form.reindexDefaultWorkspace}
+                        onChange={(e, v, checked) => handleChange('forceConsistencyCheck', checked)}
                     />
                     <CheckboxItem
                         id="vc-force-restart"

@@ -16,6 +16,8 @@
     "deleteOrphanedVersions": "Delete orphaned versions",
     "checkIntegrity": "Check and fix reference integrity",
     "reindexDefaultWorkspace": "Reindex default workspace first",
+    "forceConsistencyCheck": "Force a consistency check after the reindexing",
+    "forceConsistencyCheckDescription": "On a large repository, the check can take much longer than the reindexing itself.",
     "maxExecutionTimeInMs": "Max execution time (ms)",
     "maxExecutionTimeTooltip": "Maximum execution time in milliseconds. Set to 0 for unlimited. The process saves its position so it can resume where it stopped.",
     "pauseDuration": "Pause between deletions (ms)",

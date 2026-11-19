@@ -12,6 +12,7 @@ const DEFAULT_CONFIG = {
     deleteOrphanedVersions: false,
     checkIntegrity: false,
     reindexDefaultWorkspace: false,
+    forceConsistencyCheck: false,
     maxExecutionTimeInMs: 60000
 };
 
@@ -36,6 +37,7 @@ export const SchedulerConfig = () => {
                 deleteOrphanedVersions: c.deleteOrphanedVersions,
                 checkIntegrity: c.checkIntegrity,
                 reindexDefaultWorkspace: c.reindexDefaultWorkspace,
+                forceConsistencyCheck: c.forceConsistencyCheck,
                 maxExecutionTimeInMs: c.maxExecutionTimeInMs
             });
         }
@@ -57,6 +59,7 @@ export const SchedulerConfig = () => {
                     deleteOrphanedVersions: form.deleteOrphanedVersions,
                     checkIntegrity: form.checkIntegrity,
                     reindexDefaultWorkspace: form.reindexDefaultWorkspace,
+                    forceConsistencyCheck: form.reindexDefaultWorkspace && form.forceConsistencyCheck,
                     maxExecutionTimeInMs: form.maxExecutionTimeInMs
                 }
             });
@@ -213,6 +216,14 @@ export const SchedulerConfig = () => {
                         checked={form.reindexDefaultWorkspace}
                         isDisabled={loading}
                         onChange={(e, v, checked) => handleChange('reindexDefaultWorkspace', checked)}
+                    />
+                    <CheckboxItem
+                        id="vc-cfg-force-consistency-check"
+                        label={t('label.forceConsistencyCheck')}
+                        description={t('label.forceConsistencyCheckDescription')}
+                        checked={form.reindexDefaultWorkspace && form.forceConsistencyCheck}
+                        isDisabled={loading || !form.reindexDefaultWorkspace}
+                        onChange={(e, v, checked) => handleChange('forceConsistencyCheck', checked)}
                     />
                 </fieldset>
             </div>

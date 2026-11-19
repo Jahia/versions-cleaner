@@ -25,6 +25,7 @@ describe('Versions Cleaner - GraphQL API', () => {
                 deleteOrphanedVersions: false,
                 checkIntegrity: false,
                 reindexDefaultWorkspace: false,
+                forceConsistencyCheck: false,
                 maxExecutionTimeInMs: 60000
             }
         });
@@ -59,6 +60,7 @@ describe('Versions Cleaner - GraphQL API', () => {
                     expect(config).to.have.property('deleteOrphanedVersions');
                     expect(config).to.have.property('checkIntegrity');
                     expect(config).to.have.property('reindexDefaultWorkspace');
+                    expect(config).to.have.property('forceConsistencyCheck');
                     expect(config).to.have.property('maxExecutionTimeInMs');
                 });
         });
@@ -73,6 +75,7 @@ describe('Versions Cleaner - GraphQL API', () => {
                     expect(config.deleteOrphanedVersions).to.be.a('boolean');
                     expect(config.checkIntegrity).to.be.a('boolean');
                     expect(config.reindexDefaultWorkspace).to.be.a('boolean');
+                    expect(config.forceConsistencyCheck).to.be.a('boolean');
                     expect(config.maxExecutionTimeInMs).to.be.a('number');
                 });
         });
@@ -117,6 +120,13 @@ describe('Versions Cleaner - GraphQL API', () => {
             cy.apollo({query: getConfig})
                 .its('data.versionsCleaner.config.disabled')
                 .should('eq', false);
+        });
+
+        it('saves forceConsistencyCheck and reads it back consistently', () => {
+            cy.apollo({mutation: saveConfig, variables: {forceConsistencyCheck: true}});
+            cy.apollo({query: getConfig})
+                .its('data.versionsCleaner.config.forceConsistencyCheck')
+                .should('eq', true);
         });
 
         it('saves cronExpression and reads it back consistently', () => {

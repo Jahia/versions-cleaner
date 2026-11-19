@@ -13,6 +13,7 @@ public class CleanBackgroundJob extends BackgroundJob {
                 .setRunAsynchronously(Boolean.FALSE)
                 .setRestartFromLastPosition(Boolean.TRUE)
                 .setReindexDefaultWorkspace(jobDataMap.getBoolean("reindexDefaultWorkspace"))
+                .setForceConsistencyCheck(jobDataMap.getBoolean("forceConsistencyCheck"))
                 .setCheckIntegrity(jobDataMap.getBoolean("checkIntegrity"))
                 .setNbVersionsToKeep(jobDataMap.getLong("nbVersionsToKeep"))
                 .setMaxExecutionTimeInMs(jobDataMap.getLong("maxExecutionTimeInMs"))

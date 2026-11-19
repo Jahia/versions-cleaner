@@ -76,7 +76,7 @@ the nested fields (`run`, `isRunning`, …) within that container, not top-level
 | `versionsCleanerDeleteTestNode(name)` | `Boolean` | Test helper: removes the test node |
 | `versionsCleanerSetStartupDelay(delayMs)` | `Boolean` | Test helper: one-shot startup delay before next async run |
 
-`versionsCleanerRun` parameters: `nbVersionsToKeep`, `deleteOrphanedVersions`, `checkIntegrity`, `reindexDefaultWorkspace`, `maxExecutionTimeInMs`, `pauseDuration`, `subtreePath`, `forceRestartFromBeginning`.
+`versionsCleanerRun` parameters: `nbVersionsToKeep`, `deleteOrphanedVersions`, `checkIntegrity`, `reindexDefaultWorkspace`, `forceConsistencyCheck`, `maxExecutionTimeInMs`, `pauseDuration`, `subtreePath`, `forceRestartFromBeginning`.
 
 `versionsCleanerSaveConfig` parameters mirror the OSGi config properties (all optional).
 

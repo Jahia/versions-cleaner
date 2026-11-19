@@ -5,6 +5,8 @@ Jahia module to clean versions by:
 - keeping the last N versions
 - removing the orphaned versions
 
+Requires Jahia 8.2.3.0 or later.
+
 Admin UI available at `/jahia/administration/versionsCleaner`.
 
 * [Configuration (scheduled job)](#configuration-scheduled-job)
@@ -26,6 +28,7 @@ extender does not overwrite operator edits on redeploy). At runtime the effectiv
 | `disabled`                  | `true`        | Disable the scheduled purge               |
 | `cronExpression`            | `0 30 1 * * ?`| Quartz cron expression for the job        |
 | `reindexDefaultWorkspace`   | `false`       | Reindex default workspace before cleaning |
+| `forceConsistencyCheck`     | `false`       | Run a consistency check of the search index after the reindexing. Only used if `reindexDefaultWorkspace` is `true`. On a large repository, the check can take much longer than the reindexing itself |
 | `checkIntegrity`            | `false`       | Report reference-integrity problems (report-only; fixing is opt-in, see below) |
 | `nbVersionsToKeep`          | `2`           | Number of versions to keep                |
 | `maxExecutionTimeInMs`      | `60000`       | Max execution time in ms (0 = Infinite)   |
@@ -75,6 +78,7 @@ NOT flat root fields such as `versionsCleanerRun`).
 | `checkIntegrity` | `Boolean` | `false` | Report reference-integrity problems (report-only unless `checkIntegrityFix` is also set) |
 | `checkIntegrityFix` | `Boolean` | `false` | When `checkIntegrity` is true, actually FIX problems (null dangling references / remove offending nodes). Opt-in; without it the check only reports. |
 | `reindexDefaultWorkspace` | `Boolean` | `false` | Reindex default workspace first |
+| `forceConsistencyCheck` | `Boolean` | `false` | Run a consistency check of the search index after the reindexing. Ignored unless `reindexDefaultWorkspace` is `true` |
 | `maxExecutionTimeInMs` | `Long` | `0` | Max execution time in ms (0 = unlimited) |
 | `pauseDuration` | `Long` | `0` | Pause in ms between deletions |
 | `subtreePath` | `String` | `null` | Restrict scan to a subtree of the version storage |
@@ -106,6 +110,7 @@ All parameters are optional; only the provided values are updated.
 | `deleteOrphanedVersions` | `Boolean` | Whether to delete orphaned version histories |
 | `checkIntegrity` | `Boolean` | Whether to report JCR reference-integrity problems (report-only; fixing is opt-in per run) |
 | `reindexDefaultWorkspace` | `Boolean` | Whether to reindex the default workspace before cleaning |
+| `forceConsistencyCheck` | `Boolean` | Whether to run a consistency check of the search index after the reindexing |
 | `maxExecutionTimeInMs` | `Long` | Maximum execution time in milliseconds (0 = unlimited) |
 
 **Example:**
@@ -142,7 +147,8 @@ Run a scan of the versions tree and perform the configured actions.
 
 | Name | Alias | Default | Description |
 |------|-------|---------|-------------|
-| `-r` | `--reindex-default-workspace` | `false` | Reindex the default workspace before cleaning |
+| `-r` | `--reindex-default-workspace` | `false` | Reindex the default workspace before cleaning. No consistency check of the search index runs after it, unless `--force-consistency-check` is set |
+| `--force-consistency-check` | | `false` | Run a consistency check of the search index after the reindexing. Ignored without `-r`. On a large repository, the check can take much longer than the reindexing itself |
 | `-c` | `--check-integrity` | `false` | Report integrity problems of the versions (report-only unless `-fix` is also set) |
 | `-fix` | `--fix-integrity` | `false` | When checking integrity, actually FIX problems (null dangling references / remove offending nodes) instead of only reporting |
 | `-n` | `--nb-versions-to-keep` | `-1` | Number of versions to keep on non-orphaned histories |
@@ -165,6 +171,9 @@ versions-cleaner:run -o
 
 # Combined cleanup with 10-minute time limit:
 versions-cleaner:run -n 2 -o -t 600000
+
+# Reindex the default workspace first, then also check the search index:
+versions-cleaner:run -r --force-consistency-check -n 2
 ```
 
 > **Privilege note (Karaf vs GraphQL/UI):** the GraphQL and Admin-UI surfaces are gated by the
